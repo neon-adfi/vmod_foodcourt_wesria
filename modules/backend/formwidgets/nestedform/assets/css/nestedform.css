@@ -1,0 +1,40 @@
+:root {
+    --oc-nestedform-bg: var(--bs-body-bg);
+    --oc-nestedform-border: var(--oc-primary-border);
+}
+
+.nested-form {
+    position: relative;
+    min-height: 30px;
+
+    .control-tabs.primary-tabs {
+        .nav-tabs {
+            margin: 0 !important;
+        }
+    }
+
+    &.is-paneled {
+        background: var(--oc-nestedform-bg);
+        border: 1px solid var(--oc-nestedform-border);
+        border-radius: 4px;
+        box-shadow: none;
+        margin-top: 5px;
+        padding: 10px 15px 0 15px !important;
+
+        .control-tabs.primary-tabs .nav-tabs {
+            margin-left: -15px !important;
+            margin-right: -15px !important;
+
+            > li.active > a:before {
+                background-color: var(--oc-nestedform-bg);
+                border-color: var(--oc-nestedform-bg);
+            }
+
+            > li > a > span.title {
+                &:before, &:after {
+                    background-color: var(--oc-nestedform-bg);
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,198 @@
+:root {
+    --oc-richeditor-toolbar-size: 30px;
+    --oc-richeditor-zindex: 600;
+    --oc-richeditor-gutter: 20px;
+}
+
+.fr-wrapper {
+    ::selection {
+        background: var(--oc-input-selection-bg);
+        color: var(--oc-input-selection-color);
+    }
+}
+
+/*
+ * Rich Editor
+ */
+
+.field-flush .field-richeditor {
+    &,
+    &.editor-focus {
+        border: none;
+    }
+}
+
+.field-richeditor {
+    border: 1px solid var(--bs-border-color);
+    box-shadow: none;
+    border-radius: 4px;
+    transition: border-color ease-in-out .15s, box-shadow ease-in-out .15s;
+
+    /* Prevents an ugly flash during the time the editor loads */
+    > textarea {
+        display: none;
+    }
+
+    &.editor-focus {
+        border-color: var(--oc-border-focus);
+    }
+
+    &.is-stretch {
+        height: 100%;
+    }
+
+    &.size-tiny {
+        .fr-wrapper {
+            height: 50px;
+            .fr-view { min-height: 50px; }
+        }
+        .height-indicator { height: 50px; display: none; }
+    }
+    &.size-small {
+        .fr-wrapper {
+            height: 100px;
+            .fr-view { min-height: 100px; }
+        }
+        .height-indicator { height: 100px; display: none; }
+    }
+    &.size-large {
+        .fr-wrapper {
+            height: 200px;
+            .fr-view { min-height: 200px; }
+        }
+        .height-indicator { height: 200px; display: none; }
+    }
+    &.size-huge {
+        .fr-wrapper {
+            height: 250px;
+            .fr-view { min-height: 250px; }
+        }
+        .height-indicator { height: 250px; display: none; }
+    }
+    &.size-giant {
+        .fr-wrapper {
+            height: 350px;
+            .fr-view { min-height: 350px; }
+        }
+        .height-indicator { height: 350px; display: none; }
+    }
+}
+
+.fr-tooltip {
+    z-index: 9997 !important;
+}
+
+.fr-popup {
+    z-index: 9995 !important;
+}
+
+.fr-separator.fr-hs {
+    width: 100%;
+}
+
+/*
+ * Stretch
+ */
+
+.field-richeditor.is-stretch {
+    .fr-box:not(.fr-fullscreen) {
+        display: block;
+        position: relative;
+        height: 100% !important;
+        width: 100% !important;
+        border-radius: 0 !important;
+        overflow: hidden;
+
+        .fr-toolbar {
+            border-radius: 0 !important;
+            border-top-color: transparent;
+        }
+
+        .fr-wrapper {
+            width: 100%;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            position: absolute;
+            height: auto !important;
+            .fr-view {
+                min-height: 0;
+            }
+        }
+
+        .fr-placeholder {
+            top: 20px;
+            left: 20px;
+        }
+    }
+}
+
+/*
+ * Placeholders and snippets
+ */
+
+.control-richeditor {
+    figure[data-video],
+    figure[data-audio] {
+        display: inline-block;
+        width: 100%;
+        margin: 0 0 15px 0;
+        padding: 10px 10px 10px 13px;
+        border: 1px dashed #bdc3c7;
+        background: var(--oc-form-control-bg);
+        position: relative;
+        color: var(--bs-heading-color);
+        font-size: 15px;
+        font-weight: normal;
+        line-height: 150%;
+        cursor: pointer;
+
+        &:focus,
+        &.inspector-open {
+            border-color: var(--bs-primary);
+            border-style: solid;
+            outline: none;
+        }
+
+        &:after {
+            content: attr(data-label);
+        }
+
+        &:before {
+            position: static;
+            margin-right: 8px;
+            font-family: 'octo-icon' !important;
+            speak: none;
+            font-style: normal;
+            font-weight: normal;
+            font-variant: normal;
+            text-transform: none;
+            line-height: 1;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    }
+
+    figure[data-video] {
+        &:before {
+            content: "\f07f";
+        }
+    }
+
+    figure[data-audio] {
+        &:before {
+            content: "\f082";
+        }
+    }
+}
+
+/*
+ * Quick Insert
+ */
+
+.fr-quick-insert {
+    a.fr-floating-btn {
+        color: var(--oc-toolbar-color);
+        text-decoration: none;
+    }
+}

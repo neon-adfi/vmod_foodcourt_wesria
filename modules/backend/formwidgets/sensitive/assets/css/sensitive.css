@@ -1,0 +1,8 @@
+div[data-control="sensitive"] {
+    a[data-toggle],
+    a[data-copy] {
+        box-shadow: none;
+        border: 1px solid var(--bs-border-color);
+        border-left: 0;
+    }
+}

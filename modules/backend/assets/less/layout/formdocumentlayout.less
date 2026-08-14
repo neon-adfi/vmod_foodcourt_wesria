@@ -1,0 +1,222 @@
+.form-document-layout {
+    .control-tabs.primary-tabs:not(.is-nested) {
+        > div > ul.nav-tabs {
+            padding: 13px 0;
+            background: @document-tabs-bg;
+            border-bottom: 1px solid @primary-border;
+
+            &:before {
+                display: none;
+            }
+
+            > li {
+                border-right: 1px solid @primary-border;
+                border-bottom: none;
+                margin: 0!important;
+                padding: 0;
+
+                &:first-child {
+                    margin-left: -12px!important;
+                }
+
+                &:last-child {
+                    border-right: none;
+                }
+
+                a {
+                    padding: 2px 12px 0;
+                    height: 24px;
+                    border: none;
+                    top: 0;
+
+                    &:before {
+                        display: none;
+                    }
+
+                    > span.title {
+                        padding: 0;
+                        margin: 0;
+
+                        &:before, &:after {
+                            display: none;
+                        }
+
+                        > span {
+                            &:before, &:after {
+                                display: none;
+                            }
+
+                            margin: 0;
+                            padding: 0;
+                            border-top: none;
+                            color: inherit;
+                            background-color: transparent;
+                        }
+                    }
+                }
+
+                &.active a {
+                    color: @brand-primary;
+                }
+            }
+        }
+
+        // Do not display primary tabs if there is just one tab
+        &[data-single-tab] {
+            > div > ul.nav-tabs {
+                display: none!important;
+            }
+        }
+    }
+
+    .document-header .form-tabless-fields {
+        .form-group.primary-title-field {
+            .form-label, .form-translatable {
+                display: none;
+            }
+
+            .form-control {
+                display: block;
+                font-size: 24px;
+                width: 100%;
+                border: 1px solid @body-bg;
+                outline: none;
+                background: transparent;
+                color: @input-color;
+                padding: 1px;
+
+                &:not([disabled]):hover,
+                &:not([disabled]):focus {
+                    border: 1px solid @input-border;
+                    box-shadow: none;
+                }
+            }
+            span.form-control {
+                opacity: .5;
+            }
+        }
+    }
+
+    div.primary-tabs-container > div > .form-section {
+        .tab-pane.is-adaptive {
+            padding-top: 0;
+
+            &.active {
+                display: flex;
+                flex-direction: column;
+            }
+
+            > .form-group:not(.form-field-stretch) {
+                flex: 0 0 auto;
+            }
+
+            > .form-group.form-field-stretch {
+                height: auto;
+                flex: 0 0 auto;
+
+                &:last-child {
+                    flex: 1 1 auto;
+                    min-height: 0;
+                }
+            }
+        }
+    }
+
+    .component-backend-document .document-progress-indicator {
+        z-index: 1;
+    }
+
+    .form-group.span-adaptive {
+        margin-left: -@padding-standard;
+        margin-right: -@padding-standard;
+
+        > .form-label, > .form-translatable {
+            display: none;
+        }
+    }
+
+    .record-management-controls {
+        padding-left: 20px;
+        padding-bottom: 20px;
+        font-size: 0;
+
+        > div {
+            display: inline-block;
+            margin-right: 10px;
+
+            &:last-child {
+                margin-right: 0;
+            }
+
+            > .record-management-button {
+                margin-right: 0;
+            }
+        }
+
+        .record-management-button {
+            display: inline-block;
+            border: 1px solid @toolbar-border;
+            background: @primary-bg;
+            outline: none;
+            -webkit-appearance: none;
+            font-size: 14px;
+            height: 38px;
+            margin-right: 10px;
+            border-radius: 4px;
+            padding: 0 15px;
+            position: relative;
+            white-space: nowrap;
+            cursor: pointer;
+
+            &:last-child {
+                margin-right: 0;
+            }
+
+            &.has-menu {
+                &:after {
+                    font-family: 'octo-icon' !important;
+                    speak: none;
+                    font-style: normal;
+                    font-weight: normal;
+                    font-variant: normal;
+                    text-transform: none;
+                    line-height: 1;
+                    -webkit-font-smoothing: antialiased;
+                    -moz-osx-font-smoothing: grayscale;
+                    content: "\e90a";
+                    position: relative;
+                    font-size: 16px;
+                    vertical-align: middle;
+                    margin-left: 3px;
+                    margin-right: -4px;
+                }
+            }
+        }
+    }
+}
+
+.control-popover.document-secondary-popover {
+    width: 450px;
+
+    .control-tabs.secondary-tabs {
+        > div > ul.nav-tabs {
+            padding: 10px 15px;
+        }
+
+        &[data-single-tab] > div > ul.nav-tabs {
+            display: none;
+        }
+
+        .tab-content {
+            padding: 0 15px 15px;
+        }
+
+        .form-group {
+            padding-bottom: 15px;
+
+            &:last-child {
+                padding-bottom: 0;
+            }
+        }
+    }
+}
