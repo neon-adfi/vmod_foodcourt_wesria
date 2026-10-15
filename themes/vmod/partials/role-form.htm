@@ -1,0 +1,17 @@
+<form data-request="workspaces::onRole" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">
+    {% partial 'form-errors' %}
+    {% if role %}<input type="hidden" name="id" value="{{ role.id }}">{% endif %}
+    <label class="form-label" for="role-name-{{ role.id ?: 'new' }}">Role name</label>
+    <input class="form-control mb-2" id="role-name-{{ role.id ?: 'new' }}" name="name" value="{{ role.name }}" maxlength="255" required>
+    <div class="invalid-feedback d-block" data-validate-for="name"></div>
+    <fieldset class="my-3">
+        <legend class="form-label">Permissions</legend>
+        <div class="permission-grid">
+            {% for key in permissionKeys %}
+            <label class="form-check"><input class="form-check-input" type="checkbox" name="permissions[]" value="{{ key }}" {% if key in role.permissions %}checked{% endif %}><span class="form-check-label">{{ key|replace({'purchaseorder':'Purchase orders','goodsreceipt':'Goods receipts','salesorder':'Sales orders','deliveryorder':'Delivery orders','invoice_reference':'Invoice references','.':' · '})|capitalize }}</span></label>
+            {% endfor %}
+        </div>
+        <div class="invalid-feedback d-block" data-validate-for="permissions"></div>
+    </fieldset>
+    <button class="btn btn-primary" type="submit">{{ role ? 'Save role' : 'Create role' }}</button>
+</form>

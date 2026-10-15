@@ -2,7 +2,7 @@
 
 use Illuminate\Auth\AuthManager;
 use Illuminate\Contracts\Console\Kernel;
-use RainLab\User\Models\User;
+use Vmod\Core\Models\User;
 use System\Classes\PluginManager;
 
 class FoundationBootstrapTest extends ApplicationTestCase

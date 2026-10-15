@@ -1,0 +1,25 @@
+title = "Choose workspace"
+url = "/workspaces"
+layout = "default"
+[identity]
+view = "layout"
+[workspaces]
+view = "select"
+==
+<div class="page-heading"><div class="subheader">Your companies</div><h1>Choose a workspace</h1><p class="text-secondary">Select the company and branch you want to work in.</p></div>
+<div class="row g-3">
+{% for member in memberships %}
+<div class="col-md-6 col-xl-4"><div class="card workspace-card h-100"><div class="card-body">
+    <h2 class="h3">{{ member.company.name }}</h2><p class="text-secondary">{{ member.role.name }}</p>
+    <form data-request="workspaces::onSwitch" data-request-validate data-workspace-context="{{ workspaceToken }}" method="post">
+        {% partial 'form-errors' %}
+        <input type="hidden" name="company_id" value="{{ member.company_id }}">
+        <label class="form-label" for="branch-{{ member.id }}">Workspace</label>
+        <select class="form-select mb-3" id="branch-{{ member.id }}" name="branch_id"><option value="">Company · all permitted branches</option>{% for branch in member.branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select>
+        <button class="btn btn-primary w-100" type="submit">Open workspace</button>
+    </form>
+</div></div></div>
+{% else %}
+<div class="col-12"><div class="card"><div class="card-body"><h2 class="h3">No active workspace</h2><p class="mb-0 text-secondary">Use your company invitation, or ask your administrator to restore your access.</p></div></div></div>
+{% endfor %}
+</div>

@@ -1,0 +1,20 @@
+title = "Set password"
+url = "/auth/reset"
+layout = "default"
+[identity]
+view = "reset"
+==
+<div class="auth-card card"><div class="card-body">
+    <h1 class="h2 mb-4">Choose a new password</h1>
+    <form data-request="identity::onReset" data-request-validate data-request-flash method="post">
+        {% partial 'form-errors' %}
+        <input type="hidden" name="token" value="{{ this.request.input('reset') }}">
+        <input type="hidden" name="email" value="{{ this.request.input('email') }}">
+        <label class="form-label" for="password">New password</label><input class="form-control mb-2" id="password" name="password" type="password" autocomplete="new-password" required>
+        <div class="invalid-feedback d-block" data-validate-for="password"></div>
+        <label class="form-label mt-3" for="password_confirmation">Confirm password</label><input class="form-control" id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" required>
+        <div class="invalid-feedback d-block" data-validate-for="password_confirmation"></div>
+        <p class="text-secondary small mt-3">Use a strong, unique password.</p>
+        <button class="btn btn-primary w-100" type="submit">Update password</button>
+    </form>
+</div></div>

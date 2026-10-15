@@ -1,0 +1,30 @@
+title = "Sign in"
+url = "/auth"
+layout = "default"
+[identity]
+view = "login"
+==
+<div class="auth-card card">
+    <div class="card-body">
+        <div class="subheader">Your workspace</div>
+        <h1 class="h2 mt-2 mb-4">Sign in to Vmod</h1>
+        {% if this.request.input('challenge') %}
+        <form data-request="identity::onChallenge" data-request-validate data-request-flash method="post">
+            {% partial 'form-errors' %}
+            <label class="form-label" for="code">Authentication code</label>
+            <input class="form-control mb-3" id="code" name="code" inputmode="numeric" autocomplete="one-time-code" required>
+            <div data-validate-for="code" class="invalid-feedback d-block"></div>
+            <button class="btn btn-primary w-100" type="submit">Verify code</button>
+        </form>
+        {% else %}
+        <form data-request="identity::onLogin" data-request-validate data-request-flash method="post">
+            {% partial 'form-errors' %}
+            <div class="mb-3"><label class="form-label" for="email">Email address</label><input class="form-control" id="email" name="email" type="email" autocomplete="username" required><div class="invalid-feedback d-block" data-validate-for="email"></div></div>
+            <div class="mb-4"><label class="form-label" for="password">Password</label><input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required><div class="invalid-feedback d-block" data-validate-for="password"></div></div>
+            <button class="btn btn-primary w-100" type="submit">Sign in</button>
+        </form>
+        <div class="mt-3 text-center"><a href="/auth/recover">Forgot your password?</a></div>
+        <p class="text-secondary small mb-0 mt-4">New here? Use the invitation from your company administrator.</p>
+        {% endif %}
+    </div>
+</div>

@@ -1,0 +1,7 @@
+<fieldset class="mb-3">
+    <legend class="form-label">Branch access</legend>
+    {% for branch in branches %}
+    <label class="form-check"><input class="form-check-input" type="checkbox" name="branch_ids[]" value="{{ branch.id }}" {% if branch.id in selected %}checked{% endif %}><span class="form-check-label">{{ branch.name }}</span></label>
+    {% endfor %}
+    <div class="invalid-feedback d-block" data-validate-for="branch_ids"></div>
+</fieldset>

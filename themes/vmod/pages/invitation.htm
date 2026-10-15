@@ -1,0 +1,36 @@
+title = "Workspace invitation"
+url = "/invitations/:token"
+layout = "default"
+[identity]
+view = "invitation"
+==
+<div class="auth-card card"><div class="card-body">
+    {% if invitationError %}
+    <h1 class="h2">Invitation unavailable</h1><p>{{ invitationError }}</p><a href="/auth">Sign in</a>
+    {% else %}
+    <div class="subheader">Workspace invitation</div><h1 class="h2 mt-2">Join {{ invitation.company.name }}</h1>
+    <p class="text-secondary text-break">For {{ invitation.email }} · {{ invitation.role.name }}</p>
+    {% if currentUser and not intendedAccount %}
+    <p>Sign out, then use the invited account to continue.</p>
+    <form data-request="identity::onLogout" method="post">{{ form_token() }}<button class="btn btn-primary" type="submit">Sign out</button></form>
+    {% elseif accountExists and not currentUser %}
+    <p>Sign in with your existing account to accept this invitation.</p><a class="btn btn-primary w-100" href="/auth">Sign in to accept</a>
+    {% else %}
+    <form data-request="identity::onAccept" data-request-validate data-request-flash method="post">
+        {% partial 'form-errors' %}
+        {% if not accountExists %}
+        <label class="form-label" for="first_name">First name</label><input class="form-control mb-2" id="first_name" name="first_name" autocomplete="given-name" required>
+        <div class="invalid-feedback d-block" data-validate-for="first_name"></div>
+        <label class="form-label mt-3" for="last_name">Last name <span class="text-secondary">(optional)</span></label><input class="form-control mb-2" id="last_name" name="last_name" autocomplete="family-name">
+        <div class="invalid-feedback d-block" data-validate-for="last_name"></div>
+        <label class="form-label mt-3" for="password">Password</label><input class="form-control" id="password" name="password" type="password" autocomplete="new-password" required>
+        <div class="invalid-feedback d-block" data-validate-for="password"></div>
+        <label class="form-label mt-3" for="password_confirmation">Confirm password</label><input class="form-control" id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" required>
+        <div class="invalid-feedback d-block" data-validate-for="password_confirmation"></div>
+        <p class="text-secondary small mt-3">Use a strong, unique password.</p>
+        {% endif %}
+        <button class="btn btn-primary w-100 mt-3" type="submit">Accept invitation</button>
+    </form>
+    {% endif %}
+    {% endif %}
+</div></div>

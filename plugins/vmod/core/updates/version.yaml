@@ -1,0 +1,6 @@
+1.0.1:
+    - Create frontend workspaces and access records
+    - create_core_tables.php
+1.0.2:
+    - Use native database locks for CMS session blocking
+    - create_session_locks.php

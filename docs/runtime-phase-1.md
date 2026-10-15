@@ -48,6 +48,37 @@ Phase 1 serves the framework frontend and backend-login page at `/admin` (the pr
 
 The egolite script uses native Node assertions and the installed ego-browser API. It checks the served application at desktop/mobile widths, required assets, navigation/reload and runtime errors, and writes a JSON report/screenshots under `output/ego-lite/phase-1`. A browser connection failure is a failed gate, not permission to substitute HTTP-only proof. Do not clear the user's browser profile or reuse unrelated login credentials.
 
-Current acceptance is **complete for local Phase 1**; see [evidence](evidence/phase-1-foundation-2026-10-15.md). The native demo entry now uses its existing `window.jQuery`; its CodeMirror version is unchanged. Egolite screenshot capture recovered after a graceful restart of the existing installation, without upgrading or clearing the profile. TaskSpace 13 finished successfully after ten scenarios. A new invocation of the documented script creates a task space for that new acceptance run.
+Phase 1 acceptance is **complete locally**; see [evidence](evidence/phase-1-foundation-2026-10-15.md). The native demo entry now uses its existing `window.jQuery`; its CodeMirror version is unchanged. Egolite screenshot capture recovered after a graceful restart of the existing installation, without upgrading or clearing the profile. TaskSpace 13 finished successfully after ten scenarios. A new invocation of the documented Phase 1 script creates a task space for that acceptance run.
 
 The framework suite retains four SQLite-only date-aggregation skips. The evidence includes the guarded disposable-MySQL command that runs all 23 report tests with no skips, covering those four cases. The restored Tailor checks use isolated fixture datasources and temporary UUID-writing files. Three existing SVG-sanitizer advisories remain; local Phase 1 acceptance is not a production-security or license approval.
+
+## Phase 2 identity/workspaces
+
+`themes/vmod` is now the configured frontend theme (`config/cms.php` plus the ignored local `ACTIVE_THEME=vmod` override). `/auth` supports native frontend login/recovery; `/workspaces`, `/account`, `/settings/company`, `/settings/members` and `/settings/roles` are the Core screens. No historical credentials were reused. Bootstrap a new owner only through the guarded interactive command, which hides password input:
+
+```sh
+"${wesria_compose[@]}" exec -w /var/www/html php-tech php artisan vmod:bootstrap
+```
+
+After introducing a new local plugin, October's non-debug plugin manifest may need refreshing. During this phase only the derived `storage/cms/manifest.php` was removed, then `october:migrate` ran against `mysql-dev`. Core migrations are additive; do not drop tables to resume interrupted work.
+
+Core restores Laravel 12's native CSRF middleware on the CMS route because the installed October AJAX handler did not enforce it. The same route uses native `block(60, 10)` session blocking. Its dedicated `vmod_session` cache store uses Laravel's database lock driver and the standard `vmod_core_session_locks` table; the host bind-mounted file lock store failed concurrent request acceptance. Session contents still use the native file session driver. No custom session or locking implementation was introduced.
+
+Run Phase 2 acceptance with the existing owned services:
+
+```sh
+"${wesria_compose[@]}" --profile test run --rm -T \
+  -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/var/www/html \
+  php-test composer test
+"${wesria_compose[@]}" --profile test run --rm -T php-test \
+  php vendor/bin/phpcs --standard=phpcs.xml plugins/vmod/core --extensions=php
+umask 077
+"${wesria_compose[@]}" exec -T -w /var/www/html php-tech \
+  php tests/e2e/seed-phase2.php > /private/tmp/wesria-phase2-acceptance.json
+python3 -c 'import json; d=json.load(open("/private/tmp/wesria-phase2-acceptance.json")); assert d["a"]["company_id"] and d["b"]["company_id"]'
+ego-browser nodejs < tests/e2e/phase2.mjs
+```
+
+The Git safe-directory setting is command-local, not a global Git configuration change. The seed verifies CLI/local/owned database identity before writes and creates only synthetic records. Treat its private JSON as a secret; never print or publish it. The browser runner uses native Node assertions, reads local log mail privately, and writes only sanitized evidence. It creates a TaskSpace for a new run; use `globalThis.vmodE2eSpaceId` to resume the same space after failure, then finish it after screenshot inspection. This acceptance used space 22 throughout.
+
+Native `MAIL_MAILER=log` is the local sink for invitations and recovery. Successful local acceptance proves rendering, token handling and application state; it does not prove external transport or inbox delivery. See [Phase 2 evidence](evidence/phase-2-core-2026-10-15.md) for commands, results, checksums and boundaries.

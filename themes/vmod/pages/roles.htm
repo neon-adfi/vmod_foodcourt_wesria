@@ -1,0 +1,13 @@
+title = "Roles"
+url = "/settings/roles"
+layout = "default"
+[identity]
+view = "layout"
+[workspaces]
+view = "roles"
+==
+<div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }}</div><h1>Roles & permissions</h1><p class="text-secondary">Changes to a role apply to all its members and pending invitations.</p></div>
+<div class="card mb-4"><div class="card-body"><h2 class="h3">Company roles</h2>
+{% for role in roles %}<details class="border-bottom pb-2" id="role-{{ role.id }}"><summary>{{ role.name }} <span class="badge bg-secondary-lt ms-2">{{ role.permissions|length }} permissions</span></summary>{% partial 'role-form' role=role %}</details>{% else %}<p class="text-secondary">No roles within your management access.</p>{% endfor %}
+</div></div>
+<div class="card"><div class="card-body"><details id="new-role"><summary>Create a role</summary>{% partial 'role-form' role=null %}</details></div></div>

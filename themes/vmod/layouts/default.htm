@@ -1,0 +1,51 @@
+description = "Vmod application"
+==
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="referrer" content="same-origin">
+    <title>{{ this.page.title }} · Vmod</title>
+    <link href="{{ 'assets/tabler.min.css'|theme }}" rel="stylesheet">
+    <link href="{{ 'assets/app.css'|theme }}" rel="stylesheet">
+    {% styles %}
+</head>
+<body>
+<a href="#main" class="visually-hidden-focusable skip-link">Skip to content</a>
+<div class="page">
+    <header class="navbar navbar-expand-md navbar-light">
+        <div class="container-xl">
+            <a class="navbar-brand fw-bold" href="/" aria-label="Vmod home"><span class="brand-mark" aria-hidden="true">V</span> Vmod</a>
+            {% if currentUser %}
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#main-nav" aria-controls="main-nav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+            <nav class="collapse navbar-collapse" id="main-nav" aria-label="Main navigation">
+                <div class="navbar-nav me-auto">
+                    <a class="nav-link" href="/">Overview</a>
+                    <a class="nav-link" href="/workspaces">Switch workspace</a>
+                    {% if access['workspace.manage'] %}<a class="nav-link" href="/settings/company">Company & branches</a>{% endif %}
+                    {% if access['users.manage'] %}<a class="nav-link" href="/settings/members">Members</a>{% endif %}
+                    {% if access['roles.manage'] %}<a class="nav-link" href="/settings/roles">Roles</a>{% endif %}
+                </div>
+                <div class="navbar-nav align-items-md-center gap-md-2">
+                    <a class="nav-link" href="/account">{{ currentUser.first_name }}</a>
+                    <form data-request="identity::onLogout" method="post">{{ form_token() }}<button class="btn btn-outline-secondary btn-sm" type="submit">Sign out</button></form>
+                </div>
+            </nav>
+            {% endif %}
+        </div>
+    </header>
+    <main class="page-wrapper" id="main" tabindex="-1">
+        <div class="container-xl py-4">
+            {% flash %}<div class="alert alert-{{ type == 'error' ? 'danger' : type }}" role="status">{{ message }}</div>{% endflash %}
+            <div id="request-error" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
+            {% page %}
+        </div>
+    </main>
+    <footer class="footer footer-transparent"><div class="container-xl text-secondary small">Vmod · Workspace administration</div></footer>
+</div>
+{% framework extras %}
+<script type="module" src="{{ 'assets/app.js'|theme }}"></script>
+{% scripts %}
+</body>
+</html>

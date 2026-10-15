@@ -1,0 +1,17 @@
+title = "Recover password"
+url = "/auth/recover"
+layout = "default"
+[identity]
+view = "recover"
+==
+<div class="auth-card card"><div class="card-body">
+    <h1 class="h2">Reset your password</h1><p class="text-secondary">Enter your account email to receive a reset link.</p>
+    <form data-request="identity::onRecover" data-request-validate data-request-flash method="post">
+        {% partial 'form-errors' %}
+        <label class="form-label" for="email">Email address</label>
+        <input class="form-control mb-2" id="email" name="email" type="email" autocomplete="email" required>
+        <div class="invalid-feedback d-block" data-validate-for="email"></div>
+        <button class="btn btn-primary w-100 mt-3" type="submit">Send reset link</button>
+    </form>
+    <a class="d-block text-center mt-3" href="/auth">Back to sign in</a>
+</div></div>

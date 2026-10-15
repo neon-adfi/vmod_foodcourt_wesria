@@ -1,0 +1,23 @@
+title = "Overview"
+url = "/"
+layout = "default"
+[identity]
+view = "layout"
+[workspaces]
+view = "overview"
+==
+<div class="page-heading"><div class="subheader">Workspace overview</div><h1>{{ workspaceMember.company.name }}</h1><p class="text-secondary">{{ workspaceBranch ? workspaceBranch.name : 'Company · all permitted branches' }}</p></div>
+<div class="row g-3">
+    <div class="col-lg-5"><div class="card workspace-card h-100"><div class="card-body">
+        <h2 class="h3">Welcome, {{ currentUser.first_name }}</h2><p class="text-secondary">Your role is <strong>{{ workspaceMember.role.name }}</strong>.</p>
+        <p class="mb-4">Choose a workspace to switch between the companies and branches you can access.</p><a class="btn btn-primary" href="/workspaces">Switch workspace</a>
+    </div></div></div>
+    <div class="col-lg-7"><div class="card h-100"><div class="card-body"><h2 class="h3 mb-3">Manage your workspace</h2>
+        <div class="list-group list-group-flush">
+            {% if access['workspace.manage'] %}<a class="list-group-item list-group-item-action px-0" href="/settings/company"><strong>Company & branches</strong><div class="text-secondary">Keep workspace details up to date.</div></a>{% endif %}
+            {% if access['users.manage'] %}<a class="list-group-item list-group-item-action px-0" href="/settings/members"><strong>Members</strong><div class="text-secondary">Invite people and manage their access.</div></a>{% endif %}
+            {% if access['roles.manage'] %}<a class="list-group-item list-group-item-action px-0" href="/settings/roles"><strong>Roles & permissions</strong><div class="text-secondary">Define what each role can do.</div></a>{% endif %}
+            <a class="list-group-item list-group-item-action px-0" href="/account"><strong>Your account</strong><div class="text-secondary">Update your name or password.</div></a>
+        </div>
+    </div></div></div>
+</div>

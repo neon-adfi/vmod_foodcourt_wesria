@@ -33,7 +33,8 @@
         "test": ["@test:vmod", "@test:framework"],
         "test:vmod": [
             "@php tests/vmod/check-guard.php",
-            "@php vendor/bin/phpunit -c phpunit-vmod.xml --do-not-cache-result"
+            "@php vendor/bin/phpunit -c phpunit-vmod.xml --do-not-cache-result",
+            "@php tests/vmod/check-core-concurrency.php"
         ],
         "test:framework": "@php vendor/bin/phpunit -c phpunit.xml --do-not-cache-result",
         "lint": [
