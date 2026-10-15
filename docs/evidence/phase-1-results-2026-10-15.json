@@ -1,0 +1,1267 @@
+{
+  "phase": 1,
+  "status": "complete_local",
+  "checkout": "/Users/stev/htdoc/vmod_wesria",
+  "head": "ef09ef701840882e7ccb2019dd1b7a03d56c43ea",
+  "reference": "1d5f54ff55f8c1de225da53b00052f7e38f21752",
+  "development": {
+    "php": "8.2.34",
+    "basePath": "/var/www/html",
+    "environment": "local",
+    "database": {
+      "name": "vmod_wesria_dev",
+      "version": "8.0.46",
+      "user": "vmod_wesria_dev@%"
+    },
+    "grants": [
+      {
+        "Grants for vmod_wesria_dev@%": "GRANT USAGE ON *.* TO `vmod_wesria_dev`@`%`"
+      },
+      {
+        "Grants for vmod_wesria_dev@%": "GRANT ALL PRIVILEGES ON `vmod\\_wesria\\_dev`.* TO `vmod_wesria_dev`@`%`"
+      }
+    ],
+    "tables": 65,
+    "users": 0,
+    "backendUsers": 0,
+    "backendUri": "/admin",
+    "theme": "demo",
+    "plugins": [
+      "October.Demo",
+      "RainLab.User"
+    ]
+  },
+  "test": {
+    "database": {
+      "name": "vmod_wesria_test",
+      "version": "8.0.46",
+      "user": "vmod_wesria_test@%"
+    },
+    "grants": [
+      {
+        "Grants for vmod_wesria_test@%": "GRANT USAGE ON *.* TO `vmod_wesria_test`@`%`"
+      },
+      {
+        "Grants for vmod_wesria_test@%": "GRANT ALL PRIVILEGES ON `vmod\\_wesria\\_test`.* TO `vmod_wesria_test`@`%`"
+      }
+    ],
+    "users": 0,
+    "backendUsers": 0
+  },
+  "browser": {
+    "date": "2026-10-15T00:47:34.643Z",
+    "base": "https://wesria.local.test",
+    "spaceId": 13,
+    "scenarios": [
+      {
+        "name": "desktop-frontend",
+        "url": "https://wesria.local.test/",
+        "width": 1440,
+        "height": 900,
+        "contentWidth": 1425,
+        "styles": 4,
+        "scripts": 11,
+        "loadedStyles": 4,
+        "assets": [
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/vendor.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/theme.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/combine/7bbf7ac2fb2fcad3711ad5cb1a25d506-1785639492",
+            "status": 200,
+            "type": "text/css; charset=utf-8"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/css/framework-extras.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/jquery.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/bootstrap/bootstrap.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/codeblocks/codeblocks.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/slick-carousel/slick.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/framework-bundle.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/alert-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/password-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/gallery-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/card-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/quantity-input.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/app.js",
+            "status": 200,
+            "type": "application/javascript"
+          }
+        ],
+        "errors": [],
+        "screenshot": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/desktop-frontend.png",
+        "passed": true
+      },
+      {
+        "name": "desktop-navigation",
+        "url": "https://wesria.local.test/about",
+        "width": 1440,
+        "height": 900,
+        "contentWidth": 1440,
+        "styles": 3,
+        "scripts": 11,
+        "loadedStyles": 3,
+        "assets": [
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/vendor.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/theme.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/css/framework-extras.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/jquery.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/bootstrap/bootstrap.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/codeblocks/codeblocks.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/slick-carousel/slick.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/framework-bundle.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/alert-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/password-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/gallery-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/card-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/quantity-input.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/app.js",
+            "status": 200,
+            "type": "application/javascript"
+          }
+        ],
+        "errors": [],
+        "screenshot": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/desktop-navigation.png",
+        "passed": true
+      },
+      {
+        "name": "desktop-reload",
+        "url": "https://wesria.local.test/about",
+        "width": 1440,
+        "height": 900,
+        "contentWidth": 1440,
+        "styles": 3,
+        "scripts": 11,
+        "loadedStyles": 3,
+        "assets": [
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/vendor.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/theme.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/css/framework-extras.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/jquery.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/bootstrap/bootstrap.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/codeblocks/codeblocks.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/slick-carousel/slick.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/framework-bundle.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/alert-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/password-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/gallery-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/card-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/quantity-input.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/app.js",
+            "status": 200,
+            "type": "application/javascript"
+          }
+        ],
+        "errors": [],
+        "screenshot": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/desktop-reload.png",
+        "passed": true
+      },
+      {
+        "name": "desktop-codeblocks",
+        "url": "https://wesria.local.test/ajax",
+        "width": 1440,
+        "height": 900,
+        "contentWidth": 1425,
+        "styles": 4,
+        "scripts": 11,
+        "loadedStyles": 4,
+        "assets": [
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/vendor.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/theme.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/combine/9b1fe7d90cdf3ded7c7b3921f4b47ca6-1785639492",
+            "status": 200,
+            "type": "text/css; charset=utf-8"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/css/framework-extras.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/jquery.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/bootstrap/bootstrap.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/codeblocks/codeblocks.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/slick-carousel/slick.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/framework-bundle.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/alert-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/password-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/gallery-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/card-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/quantity-input.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/app.js",
+            "status": 200,
+            "type": "application/javascript"
+          }
+        ],
+        "errors": [],
+        "screenshot": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/desktop-codeblocks.png",
+        "passed": true
+      },
+      {
+        "name": "desktop-backend-login",
+        "url": "https://wesria.local.test/admin/backend/auth/signin",
+        "width": 1440,
+        "height": 900,
+        "contentWidth": 1440,
+        "styles": 4,
+        "scripts": 8,
+        "loadedStyles": 4,
+        "assets": [
+          {
+            "url": "https://wesria.local.test/modules/system/assets/css/main.css?v985a2d6d",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/assets/css/main.css?v985a2d6d",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/vuecomponents/modal/assets/css/modal.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/assets/images/october-login-gradients/1.css?v=985a2d6d",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/vendor.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/framework-bundle.min.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/foundation.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/lang/lang.en.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/main.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/assets/js/main.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/assets/js/auth/auth.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/vuecomponents/modal/assets/js/classes/index.js",
+            "status": 200,
+            "type": "application/javascript"
+          }
+        ],
+        "errors": [],
+        "screenshot": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/desktop-backend-login.png",
+        "passed": true
+      },
+      {
+        "name": "mobile-frontend",
+        "url": "https://wesria.local.test/",
+        "width": 390,
+        "height": 844,
+        "contentWidth": 390,
+        "styles": 4,
+        "scripts": 11,
+        "loadedStyles": 4,
+        "assets": [
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/vendor.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/theme.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/combine/7bbf7ac2fb2fcad3711ad5cb1a25d506-1785639492",
+            "status": 200,
+            "type": "text/css; charset=utf-8"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/css/framework-extras.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/jquery.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/bootstrap/bootstrap.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/codeblocks/codeblocks.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/slick-carousel/slick.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/framework-bundle.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/alert-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/password-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/gallery-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/card-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/quantity-input.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/app.js",
+            "status": 200,
+            "type": "application/javascript"
+          }
+        ],
+        "errors": [],
+        "screenshot": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/mobile-frontend.png",
+        "passed": true
+      },
+      {
+        "name": "mobile-navigation",
+        "url": "https://wesria.local.test/about",
+        "width": 390,
+        "height": 844,
+        "contentWidth": 390,
+        "styles": 3,
+        "scripts": 11,
+        "loadedStyles": 3,
+        "assets": [
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/vendor.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/theme.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/css/framework-extras.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/jquery.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/bootstrap/bootstrap.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/codeblocks/codeblocks.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/slick-carousel/slick.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/framework-bundle.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/alert-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/password-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/gallery-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/card-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/quantity-input.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/app.js",
+            "status": 200,
+            "type": "application/javascript"
+          }
+        ],
+        "errors": [],
+        "screenshot": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/mobile-navigation.png",
+        "passed": true
+      },
+      {
+        "name": "mobile-reload",
+        "url": "https://wesria.local.test/about",
+        "width": 390,
+        "height": 844,
+        "contentWidth": 390,
+        "styles": 3,
+        "scripts": 11,
+        "loadedStyles": 3,
+        "assets": [
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/vendor.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/theme.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/css/framework-extras.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/jquery.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/bootstrap/bootstrap.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/codeblocks/codeblocks.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/slick-carousel/slick.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/framework-bundle.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/alert-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/password-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/gallery-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/card-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/quantity-input.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/app.js",
+            "status": 200,
+            "type": "application/javascript"
+          }
+        ],
+        "errors": [],
+        "screenshot": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/mobile-reload.png",
+        "passed": true
+      },
+      {
+        "name": "mobile-codeblocks",
+        "url": "https://wesria.local.test/ajax",
+        "width": 390,
+        "height": 844,
+        "contentWidth": 390,
+        "styles": 4,
+        "scripts": 11,
+        "loadedStyles": 4,
+        "assets": [
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/vendor.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/css/theme.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/combine/9b1fe7d90cdf3ded7c7b3921f4b47ca6-1785639492",
+            "status": 200,
+            "type": "text/css; charset=utf-8"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/css/framework-extras.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/jquery.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/bootstrap/bootstrap.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/codeblocks/codeblocks.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/vendor/slick-carousel/slick.min.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/framework-bundle.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/alert-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/password-dialog.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/gallery-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/card-slider.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/controls/quantity-input.js",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/themes/demo/assets/js/app.js",
+            "status": 200,
+            "type": "application/javascript"
+          }
+        ],
+        "errors": [],
+        "screenshot": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/mobile-codeblocks.png",
+        "passed": true
+      },
+      {
+        "name": "mobile-backend-login",
+        "url": "https://wesria.local.test/admin/backend/auth/signin",
+        "width": 390,
+        "height": 844,
+        "contentWidth": 390,
+        "styles": 4,
+        "scripts": 8,
+        "loadedStyles": 4,
+        "assets": [
+          {
+            "url": "https://wesria.local.test/modules/system/assets/css/main.css?v985a2d6d",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/assets/css/main.css?v985a2d6d",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/vuecomponents/modal/assets/css/modal.css",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/assets/images/october-login-gradients/1.css?v=985a2d6d",
+            "status": 200,
+            "type": "text/css"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/vendor.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/framework-bundle.min.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/foundation.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/lang/lang.en.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/system/assets/js/main.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/assets/js/main.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/assets/js/auth/auth.js?v985a2d6d",
+            "status": 200,
+            "type": "application/javascript"
+          },
+          {
+            "url": "https://wesria.local.test/modules/backend/vuecomponents/modal/assets/js/classes/index.js",
+            "status": 200,
+            "type": "application/javascript"
+          }
+        ],
+        "errors": [],
+        "screenshot": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/mobile-backend-login.png",
+        "passed": true
+      }
+    ],
+    "passed": true,
+    "runtime": {
+      "checkout": "/Users/stev/htdoc/vmod_wesria",
+      "uniqueServedFileMatched": true
+    },
+    "installation": "0.5.1.13",
+    "recovery": "Graceful quit/relaunch of the same installation; blank control and application screenshot successful; no upgrade/profile clearing.",
+    "screenshots_visually_inspected": 10
+  },
+  "checks": {
+    "preboot_rejections": {
+      "passed": 11,
+      "failed": 0
+    },
+    "application_mysql": {
+      "tests": 19,
+      "assertions": 31,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "framework_sqlite": {
+      "tests": 425,
+      "assertions": 2287,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 4,
+      "skipped_cases": [
+        "testWeeklyGrouping",
+        "testMonthlyGrouping",
+        "testQuarterlyGrouping",
+        "testYearlyGrouping"
+      ],
+      "coverage": "All four execute in framework_mysql_reports."
+    },
+    "framework_mysql_reports": {
+      "tests": 23,
+      "assertions": 178,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "tailor_restored": {
+      "tests": 4,
+      "assertions": 20,
+      "errors": 0,
+      "failures": 0,
+      "skipped": 0
+    },
+    "fresh_disposable_install": {
+      "tables_before": 0,
+      "tables_after": 65,
+      "users": 0,
+      "backend_users": 0,
+      "commands": [
+        "october:migrate",
+        "tailor:migrate"
+      ],
+      "environment": "testing",
+      "schema": "vmod_wesria_test"
+    },
+    "development_migrations": {
+      "result": "Nothing to migrate for October and Tailor",
+      "tables": 65,
+      "users": 0,
+      "backend_users": 0,
+      "reset": false
+    }
+  },
+  "packages": {
+    "bacon/bacon-qr-code": "v3.1.1",
+    "brick/math": "0.14.8",
+    "carbonphp/carbon-doctrine-types": "2.1.0",
+    "composer/ca-bundle": "1.5.13",
+    "composer/class-map-generator": "1.7.3",
+    "composer/composer": "2.10.3",
+    "composer/installers": "v1.12.0",
+    "composer/metadata-minifier": "1.0.1",
+    "composer/pcre": "3.4.0",
+    "composer/semver": "3.4.4",
+    "composer/spdx-licenses": "1.6.0",
+    "composer/xdebug-handler": "3.0.5",
+    "dasprid/enum": "1.0.7",
+    "dflydev/dot-access-data": "v3.0.3",
+    "doctrine/dbal": "3.10.6",
+    "doctrine/deprecations": "1.1.6",
+    "doctrine/event-manager": "2.1.1",
+    "doctrine/inflector": "2.1.0",
+    "doctrine/instantiator": "2.0.0",
+    "doctrine/lexer": "3.0.1",
+    "dragonmantank/cron-expression": "v3.6.0",
+    "egulias/email-validator": "4.0.4",
+    "enshrined/svg-sanitize": "0.22.0",
+    "firebase/php-jwt": "v7.2.1",
+    "fruitcake/php-cors": "v1.4.0",
+    "graham-campbell/result-type": "v1.1.4",
+    "guzzlehttp/guzzle": "7.15.3",
+    "guzzlehttp/promises": "2.5.2",
+    "guzzlehttp/psr7": "2.13.0",
+    "guzzlehttp/uri-template": "v1.0.10",
+    "intervention/gif": "4.2.4",
+    "intervention/image": "3.11.8",
+    "jaybizzle/crawler-detect": "v1.4.1",
+    "justinrainbow/json-schema": "6.10.0",
+    "larajax/larajax": "v2.2.3",
+    "laravel/framework": "v12.70.0",
+    "laravel/prompts": "v0.3.22",
+    "laravel/serializable-closure": "v2.0.15",
+    "laravel/tinker": "v3.0.2",
+    "league/commonmark": "2.10.3",
+    "league/config": "v1.2.0",
+    "league/csv": "9.28.0",
+    "league/flysystem": "3.36.0",
+    "league/flysystem-local": "3.31.0",
+    "league/mime-type-detection": "1.17.0",
+    "league/uri": "7.8.1",
+    "league/uri-interfaces": "7.8.1",
+    "linkorb/jsmin-php": "1.0.0",
+    "marc-mabe/php-enum": "v4.7.2",
+    "masterminds/html5": "2.10.1",
+    "mobiledetect/mobiledetectlib": "4.11.0",
+    "monolog/monolog": "3.10.0",
+    "myclabs/deep-copy": "1.14.0",
+    "nesbot/carbon": "3.13.2",
+    "nette/schema": "v1.3.5",
+    "nette/utils": "v4.1.5",
+    "nikic/php-parser": "v5.8.0",
+    "nunomaduro/termwind": "v2.4.0",
+    "october/rain": "v4.3.4",
+    "paragonie/constant_time_encoding": "v3.1.3",
+    "phar-io/manifest": "2.0.4",
+    "phar-io/version": "3.2.1",
+    "phpoption/phpoption": "1.9.5",
+    "phpunit/php-code-coverage": "9.2.32",
+    "phpunit/php-file-iterator": "3.0.6",
+    "phpunit/php-invoker": "3.1.1",
+    "phpunit/php-text-template": "2.0.4",
+    "phpunit/php-timer": "5.0.3",
+    "phpunit/phpunit": "9.6.36",
+    "pragmarx/google2fa": "v9.1.0",
+    "psr/cache": "3.0.0",
+    "psr/clock": "1.0.0",
+    "psr/container": "2.0.2",
+    "psr/event-dispatcher": "1.0.0",
+    "psr/http-client": "1.0.3",
+    "psr/http-factory": "1.1.0",
+    "psr/http-message": "2.0",
+    "psr/log": "3.0.2",
+    "psr/simple-cache": "3.0.0",
+    "psy/psysh": "v0.12.24",
+    "rainlab/user-plugin": "v3.7.2",
+    "ralouphie/getallheaders": "3.0.3",
+    "ramsey/collection": "2.1.1",
+    "ramsey/uuid": "4.9.3",
+    "react/promise": "v3.3.0",
+    "scssphp/scssphp": "v1.13.0",
+    "sebastian/cli-parser": "1.0.2",
+    "sebastian/code-unit": "1.0.8",
+    "sebastian/code-unit-reverse-lookup": "2.0.3",
+    "sebastian/comparator": "4.0.10",
+    "sebastian/complexity": "2.0.3",
+    "sebastian/diff": "4.0.6",
+    "sebastian/environment": "5.1.5",
+    "sebastian/exporter": "4.0.9",
+    "sebastian/global-state": "5.0.8",
+    "sebastian/lines-of-code": "1.0.4",
+    "sebastian/object-enumerator": "4.0.4",
+    "sebastian/object-reflector": "2.0.4",
+    "sebastian/recursion-context": "4.0.7",
+    "sebastian/resource-operations": "3.0.4",
+    "sebastian/type": "3.2.1",
+    "sebastian/version": "3.0.2",
+    "seld/jsonlint": "1.12.1",
+    "seld/phar-utils": "1.2.2",
+    "seld/signal-handler": "2.0.2",
+    "squizlabs/php_codesniffer": "3.13.6",
+    "symfony/clock": "v7.4.21",
+    "symfony/console": "v7.4.16",
+    "symfony/css-selector": "v7.4.18",
+    "symfony/deprecation-contracts": "v3.7.1",
+    "symfony/error-handler": "v7.4.15",
+    "symfony/event-dispatcher": "v7.4.17",
+    "symfony/event-dispatcher-contracts": "v3.7.1",
+    "symfony/filesystem": "v7.4.21",
+    "symfony/finder": "v7.4.14",
+    "symfony/html-sanitizer": "v7.4.14",
+    "symfony/http-foundation": "v7.4.16",
+    "symfony/http-kernel": "v7.4.16",
+    "symfony/mailer": "v7.4.15",
+    "symfony/mime": "v7.4.16",
+    "symfony/polyfill-ctype": "v1.37.0",
+    "symfony/polyfill-intl-grapheme": "v1.41.0",
+    "symfony/polyfill-intl-idn": "v1.38.1",
+    "symfony/polyfill-intl-normalizer": "v1.38.0",
+    "symfony/polyfill-mbstring": "v1.38.2",
+    "symfony/polyfill-php73": "v1.37.0",
+    "symfony/polyfill-php80": "v1.37.0",
+    "symfony/polyfill-php81": "v1.38.1",
+    "symfony/polyfill-php83": "v1.41.0",
+    "symfony/polyfill-php84": "v1.38.1",
+    "symfony/polyfill-php85": "v1.41.0",
+    "symfony/polyfill-uuid": "v1.37.0",
+    "symfony/process": "v7.4.13",
+    "symfony/routing": "v7.4.15",
+    "symfony/service-contracts": "v3.7.1",
+    "symfony/string": "v7.4.21",
+    "symfony/translation": "v7.4.17",
+    "symfony/translation-contracts": "v3.7.1",
+    "symfony/uid": "v7.4.9",
+    "symfony/var-dumper": "v7.4.15",
+    "symfony/yaml": "v7.4.15",
+    "theseer/tokenizer": "1.3.1",
+    "tijsverkoyen/css-to-inline-styles": "v2.4.0",
+    "twig/twig": "v3.28.0",
+    "vlucas/phpdotenv": "v5.6.4",
+    "voku/portable-ascii": "2.1.1",
+    "wikimedia/less.php": "v5.5.1"
+  },
+  "audit": {
+    "advisories": {
+      "enshrined/svg-sanitize": [
+        {
+          "advisoryId": "PKSA-8j6w-3kr7-s9xk",
+          "packageName": "enshrined/svg-sanitize",
+          "affectedVersions": "<=0.22.0",
+          "title": "enshrined/svg-sanitize: Stored XSS via DTD Entity / HTML5 Named Character Reference Collision",
+          "cve": "CVE-2026-107380",
+          "link": "https://github.com/advisories/GHSA-9rjx-3jch-6vjf",
+          "reportedAt": "2026-10-08T19:41:15+00:00",
+          "sources": [
+            {
+              "name": "GitHub",
+              "remoteId": "GHSA-9rjx-3jch-6vjf"
+            }
+          ],
+          "severity": "medium"
+        },
+        {
+          "advisoryId": "PKSA-6j95-1jtb-x6wc",
+          "packageName": "enshrined/svg-sanitize",
+          "affectedVersions": "<=0.22.0",
+          "title": "svg-sanitizer: Mixed-case xlink:HrEf skips the `<use>` nesting-DoS check in Resolver::processReferences",
+          "cve": "CVE-2026-107381",
+          "link": "https://github.com/advisories/GHSA-m9xh-6747-9r6f",
+          "reportedAt": "2026-10-08T19:41:10+00:00",
+          "sources": [
+            {
+              "name": "GitHub",
+              "remoteId": "GHSA-m9xh-6747-9r6f"
+            }
+          ],
+          "severity": "medium"
+        },
+        {
+          "advisoryId": "PKSA-cbx2-m9db-bmzd",
+          "packageName": "enshrined/svg-sanitize",
+          "affectedVersions": "<=0.22.0",
+          "title": "enshrined/svg-sanitize: Denial of Service via DTD Attribute Declaration Crash",
+          "cve": "CVE-2026-107379",
+          "link": "https://github.com/advisories/GHSA-v383-3rw5-q8rf",
+          "reportedAt": "2026-10-08T19:41:05+00:00",
+          "sources": [
+            {
+              "name": "GitHub",
+              "remoteId": "GHSA-v383-3rw5-q8rf"
+            }
+          ],
+          "severity": "medium"
+        }
+      ]
+    },
+    "abandoned": [],
+    "filter": []
+  },
+  "sha256": {
+    ".env": "8088beacb6df442af5fef12d2d29093a50d9f69c2fe721ad835c1021f6950177",
+    "composer.lock": "e5017adecd449ead9d00de31b2561756f0c804adf8f685c91354e860719420d6",
+    "themes/demo/assets/vendor/codeblocks/codeblocks.js": "3b6d603c7a76077026dfcc9f28788e31a0c321093837aa9e7d75ff110773a6e6",
+    "themes/demo/assets/vendor/codeblocks/codeblocks.min.js": "faa5eb7cf1e945cfb05ea531c58b859fc44852f117c10e3f4bed9fc4be4f18c1",
+    "themes/demo/assets/vendor/codeblocks/LICENSE.txt": "a3f2fe2ac6b471aa80c737c5d283dd049bdc903a73835ee6d4d2cac02fdd53bf"
+  },
+  "screenshots": [
+    {
+      "scenario": "desktop-frontend",
+      "path": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/desktop-frontend.png",
+      "sha256": "b7ca74a1872e9892c7ae156c177ad88d8cc312e42d75aefa5b3d6be8fa8bfd4e",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "scenario": "desktop-navigation",
+      "path": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/desktop-navigation.png",
+      "sha256": "8664352865f3a220d26c2e1f17bbf834aea0b5c0d856c4562da54df2f6c94742",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "scenario": "desktop-reload",
+      "path": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/desktop-reload.png",
+      "sha256": "8664352865f3a220d26c2e1f17bbf834aea0b5c0d856c4562da54df2f6c94742",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "scenario": "desktop-codeblocks",
+      "path": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/desktop-codeblocks.png",
+      "sha256": "aaa28b3c0a014b7f38db280d893aa9ab12d3ab8a5ed97c8d64f98fcbe0504ca7",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "scenario": "desktop-backend-login",
+      "path": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/desktop-backend-login.png",
+      "sha256": "6fe415f0583ecde13237746c9ad9aefaf40447546979a59d32dc67b4cdc33e5a",
+      "width": 1440,
+      "height": 900
+    },
+    {
+      "scenario": "mobile-frontend",
+      "path": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/mobile-frontend.png",
+      "sha256": "a6f6e7f07cd790a50d8ed26cb7a44667bc35fce6f385691a394a9395d7e0a75d",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "scenario": "mobile-navigation",
+      "path": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/mobile-navigation.png",
+      "sha256": "2247cb797e0cff41370248482614769ee6d55347953e926fc75eb33afb415d71",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "scenario": "mobile-reload",
+      "path": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/mobile-reload.png",
+      "sha256": "2247cb797e0cff41370248482614769ee6d55347953e926fc75eb33afb415d71",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "scenario": "mobile-codeblocks",
+      "path": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/mobile-codeblocks.png",
+      "sha256": "626cab1471879c68a1cb8c0ccf908ca07fc0b7899509f276763c35a320428c19",
+      "width": 390,
+      "height": 844
+    },
+    {
+      "scenario": "mobile-backend-login",
+      "path": "/Users/stev/htdoc/vmod_wesria/output/ego-lite/phase-1/mobile-backend-login.png",
+      "sha256": "08624c9e236f979c6650f7c47acd792eee741c1a4beaa982d507b00a8aa93e37",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "verified_at": "2026-10-15T00:52:53.112209+00:00",
+  "lockfile_git_state": "tracked/staged only; no commit",
+  "review": {
+    "mode": "fresh read-only independent review",
+    "material_findings": 0,
+    "tests_rerun_by_reviewer": false
+  }
+}

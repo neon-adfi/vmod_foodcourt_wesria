@@ -394,7 +394,7 @@ class ReportQueryBuilderTest extends TestCase
         $this->assertCount(3, $dataArray); // We have 3 products and 4 sales
         $this->assertTrue(property_exists($dataArray[0], 'oc_dimension'));
         $this->assertTrue(property_exists($dataArray[0], 'oc_field_product_name'));
-        $this->assertTrue(property_exists($dataArray[0], 'oc_field_product_code'));
+        $this->assertTrue(property_exists($dataArray[0], 'oc_field_product_sku'));
         $this->assertTrue(property_exists($dataArray[0], 'oc_metric_sales_total'));
         $this->assertTrue(property_exists($dataArray[0], 'oc_metric_sales_count'));
 
@@ -407,9 +407,9 @@ class ReportQueryBuilderTest extends TestCase
         $this->assertEquals('Product 2 - t-shirt', $dataArray[1]->oc_field_product_name);
         $this->assertEquals('Product 1 - hoodie', $dataArray[2]->oc_field_product_name);
 
-        $this->assertEquals('P3', $dataArray[0]->oc_field_product_code);
-        $this->assertEquals('P2', $dataArray[1]->oc_field_product_code);
-        $this->assertEquals('P1', $dataArray[2]->oc_field_product_code);
+        $this->assertEquals('P3', $dataArray[0]->oc_field_product_sku);
+        $this->assertEquals('P2', $dataArray[1]->oc_field_product_sku);
+        $this->assertEquals('P1', $dataArray[2]->oc_field_product_sku);
 
         $this->assertEquals(33, $dataArray[0]->oc_metric_sales_total);
         $this->assertEquals(44, $dataArray[1]->oc_metric_sales_total);
@@ -751,8 +751,8 @@ class ReportQueryBuilderTest extends TestCase
 
         $dimension = new ReportDimension('product', 'product_id', 'Product');
         $dimension->addDimensionField(
-            new ReportDimensionField('oc_field_product_name', 'Product name', null, true, false),
-            new ReportDimensionField('oc_field_product_sku', 'Product SKU', null, true, false),
+            new ReportDimensionField('oc_field_product_name', 'Product name', 'test_sales_products_data.name', true, false),
+            new ReportDimensionField('oc_field_product_sku', 'Product SKU', 'test_sales_products_data.sku', true, false),
         );
 
         return ReportQueryBuilder::table('test_sales_report_data')
@@ -776,7 +776,7 @@ class ReportQueryBuilderTest extends TestCase
 
                 $query->addSelect([
                     'test_sales_products_data.name as oc_field_product_name',
-                    'test_sales_products_data.sku as oc_field_product_code'
+                    'test_sales_products_data.sku as oc_field_product_sku'
                 ]);
 
                 $query->where('test_sales_report_data.completed', true);

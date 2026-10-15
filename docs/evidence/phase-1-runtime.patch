@@ -1,0 +1,98 @@
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -7,8 +7,11 @@
+     ipam:
+       config:
+         - subnet: 10.254.252.0/24
+-  db:
+-    external: true
++  test:
++    internal: true
++    ipam:
++      config:
++        - subnet: 10.253.49.0/24
+ 
+ services:
+   nginx-tech:
+@@ -37,6 +40,8 @@
+       - traefik.docker.network=proxy
+ 
+   php-tech:
++    image: foodywesria-php-tech:phase1
++    env_file: ./wesria-dev.env
+     build:
+       context: .
+       dockerfile: Dockerfile_php8
+@@ -44,10 +49,53 @@
+     volumes:
+       - /Users/stev/htdoc/vmod_wesria:/var/www/html
+       - ./php/conf.d/zz-uploads.ini:/usr/local/etc/php/conf.d/zz-uploads.ini:ro
+-    command: >
+-      sh -c "if [ ! -d /var/www/html/vendor ]; then composer -d /var/www/html install --no-interaction; fi && php-fpm"
++    command: php-fpm
+     expose:
+       - "9000"
+     networks:
+       - internal
+-      - db
++
++  mysql-dev:
++    image: mysql:8.0.46@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b
++    env_file: ./wesria-mysql-dev.env
++    restart: unless-stopped
++    volumes:
++      - wesria-dev-data:/var/lib/mysql
++    networks:
++      - internal
++    healthcheck:
++      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
++      interval: 5s
++      timeout: 5s
++      retries: 30
++
++  mysql-test:
++    image: mysql:8.0.46@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b
++    profiles: [test]
++    env_file: ./wesria-mysql-test.env
++    tmpfs:
++      - /var/lib/mysql
++    networks:
++      - test
++    healthcheck:
++      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "--silent"]
++      interval: 5s
++      timeout: 5s
++      retries: 30
++
++  php-test:
++    image: foodywesria-php-tech:phase1
++    profiles: [test]
++    working_dir: /var/www/html
++    env_file: ./wesria-test.env
++    volumes:
++      - /Users/stev/htdoc/vmod_wesria:/var/www/html
++    depends_on:
++      mysql-test:
++        condition: service_healthy
++    networks:
++      - test
++    command: ["php", "-v"]
++
++volumes:
++  wesria-dev-data:
+--- a/Dockerfile_php8
++++ b/Dockerfile_php8
+@@ -1,4 +1,4 @@
+-FROM php:8.4-fpm
++FROM php:8.2.34-fpm-bookworm@sha256:76ba16ca0fa4b202b57299d3bd96672c0ddc98fa81dc95fd495696723b52584a
+ 
+ RUN apt-get update && apt-get install -y \
+     cron git-core jq unzip vim zip curl \
+@@ -13,6 +13,6 @@
+  && docker-php-ext-enable imagick \
+  && rm -rf /var/lib/apt/lists/*
+ 
+-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
++RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --version=2.10.3
+ 
+ RUN chown -R www-data:www-data /var/www/html

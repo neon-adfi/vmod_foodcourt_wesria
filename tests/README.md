@@ -1,3 +1,13 @@
+# Wesria application tests
+
+Use the guarded application suite in `phpunit-vmod.xml` through the PHP 8.2 `php-test` service described in [runtime instructions](../docs/runtime-phase-1.md). Extend `Vmod\Tests\ApplicationTestCase`; plugin PHPUnit files use `../../../tests/vmod/bootstrap.php`. It checks explicit disposable MySQL ownership before boot and rechecks resolved configuration before migrations. Do not use this root legacy plugin bootstrap for Vmod auth tests: October's `PluginTestCase::createApplication()` replaces native frontend auth with backend auth.
+
+`composer test:vmod` discovers foundation and future Vmod plugin tests. `composer test:framework` uses the separate October fixture/SQLite suite. `composer test` runs both. Framework SQLite results are never stock-locking evidence. Run `ego-browser nodejs < tests/e2e/phase1.mjs` on the host for Phase 1 browser acceptance; later phases extend the browser journeys.
+
+The historical October instructions below describe the framework test base. Their old `useConfigForTesting` option and `october:up` command do not apply to October 4.3; current migrations use `october:migrate`, and the guarded application suite uses explicit environment connection settings.
+
+---
+
 # Plugin testing
 
 Plugin unit tests can be performed by running `phpunit` in the base plugin directory.

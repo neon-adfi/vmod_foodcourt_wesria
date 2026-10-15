@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit backupGlobals="false"
          backupStaticAttributes="false"
-         bootstrap="modules/system/tests/bootstrap.php"
+         bootstrap="tests/framework-bootstrap.php"
          colors="true"
          convertErrorsToExceptions="true"
          convertNoticesToExceptions="true"
@@ -16,19 +16,44 @@
     </testsuites>
 
     <php>
-        <env name="APP_ENV" value="testing" />
-        <env name="APP_LOCALE" value="en" />
-        <env name="CACHE_DRIVER" value="array" />
-        <env name="SESSION_DRIVER" value="array" />
-        <env name="ACTIVE_THEME" value="test" />
-        <env name="CONVERT_LINE_ENDINGS" value="true" />
-        <env name="CMS_SAFE_MODE" value="false" />
-        <env name="CMS_ROUTE_CACHE" value="true" />
-        <env name="CMS_TWIG_CACHE" value="false" />
-        <env name="PLUGINS_PATH" value="modules/system/tests/fixtures/plugins" />
-        <env name="THEMES_PATH" value="modules/cms/tests/fixtures/themes" />
-        <env name="ENABLE_CSRF" value="false" />
-        <env name="DB_CONNECTION" value="sqlite" />
-        <env name="DB_DATABASE" value=":memory:" />
+        <env name="APP_ENV" value="testing" force="true" />
+        <env name="APP_LOCALE" value="en" force="true" />
+        <env name="CACHE_DRIVER" value="array" force="true" />
+        <env name="CACHE_STORE" value="array" force="true" />
+        <env name="SESSION_DRIVER" value="array" force="true" />
+        <env name="ACTIVE_THEME" value="test" force="true" />
+        <env name="CONVERT_LINE_ENDINGS" value="true" force="true" />
+        <env name="CMS_SAFE_MODE" value="false" force="true" />
+        <env name="CMS_ROUTE_CACHE" value="true" force="true" />
+        <env name="CMS_TWIG_CACHE" value="false" force="true" />
+        <env name="PLUGINS_PATH" value="modules/system/tests/fixtures/plugins" force="true" />
+        <env name="THEMES_PATH" value="modules/cms/tests/fixtures/themes" force="true" />
+        <env name="ENABLE_CSRF" value="false" force="true" />
+        <env name="DB_CONNECTION" value="sqlite" force="true" />
+        <env name="DB_DATABASE" value=":memory:" force="true" />
+        <env name="DB_URL" value="" force="true" />
+        <env name="CACHE_PATH" value="/tmp/wesria-framework-storage" force="true" />
+        <env name="STORAGE_PATH" value="/tmp/wesria-framework-storage" force="true" />
+        <env name="APP_CONFIG_CACHE" value="/tmp/wesria-framework-config.php" force="true" />
+        <!-- Laravel reads inherited $_SERVER before getenv; isolate both channels. -->
+        <server name="APP_ENV" value="testing" />
+        <server name="APP_LOCALE" value="en" />
+        <server name="CACHE_DRIVER" value="array" />
+        <server name="CACHE_STORE" value="array" />
+        <server name="SESSION_DRIVER" value="array" />
+        <server name="ACTIVE_THEME" value="test" />
+        <server name="CONVERT_LINE_ENDINGS" value="true" />
+        <server name="CMS_SAFE_MODE" value="false" />
+        <server name="CMS_ROUTE_CACHE" value="true" />
+        <server name="CMS_TWIG_CACHE" value="false" />
+        <server name="PLUGINS_PATH" value="modules/system/tests/fixtures/plugins" />
+        <server name="THEMES_PATH" value="modules/cms/tests/fixtures/themes" />
+        <server name="ENABLE_CSRF" value="false" />
+        <server name="DB_CONNECTION" value="sqlite" />
+        <server name="DB_DATABASE" value=":memory:" />
+        <server name="DB_URL" value="" />
+        <server name="CACHE_PATH" value="/tmp/wesria-framework-storage" />
+        <server name="STORAGE_PATH" value="/tmp/wesria-framework-storage" />
+        <server name="APP_CONFIG_CACHE" value="/tmp/wesria-framework-config.php" />
     </php>
 </phpunit>
