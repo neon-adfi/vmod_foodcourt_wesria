@@ -50,7 +50,7 @@ class Catalogue extends \Cms\Classes\ComponentBase
         $this->page['showEditor'] = Workspace::hasAccess('catalogue.write') && (!empty($filters['edit']) || !empty($filters['new']));
         $this->page['saveHandler'] = ['parties' => 'onSaveParty', 'products' => 'onSaveProduct', 'packages' => 'onSavePackage', 'offers' => 'onSaveOffer', 'tax_rates' => 'onSaveTaxRate', 'locations' => 'onSaveLocation'][$kind];
         if ($this->page['showEditor']) {
-            $this->page['baseUomLocked'] = $kind === 'products' && $this->page['record'] && ProductPackage::where('product_id', $this->page['record']->id)->exists();
+            $this->page['baseUomLocked'] = $kind === 'products' && $this->page['record'] && (ProductPackage::where('product_id', $this->page['record']->id)->exists() || \Vmod\Erp\Models\StockMovement::where('product_id', $this->page['record']->id)->exists());
             $this->page['products'] = $kind === 'packages' ? $service->choices('products') : [];
             $this->page['packages'] = $kind === 'offers' ? $service->choices('packages') : [];
             $this->page['suppliers'] = $kind === 'offers' ? $service->choices('parties')->where('is_supplier', true) : [];

@@ -22,7 +22,10 @@ description = "Vmod application"
             <nav class="collapse navbar-collapse" id="main-nav" aria-label="Main navigation">
                 <div class="navbar-nav me-auto">
                     <a class="nav-link" href="/">Overview</a>
-                    {% if access['catalogue.read'] %}<a class="nav-link" href="/catalogue/products">Catalogue</a>{% endif %}
+                    {% if access['purchaseorder.read'] %}<a class="nav-link" href="/purchasing">Purchasing</a>{% endif %}
+                {% if access['goodsreceipt.read'] %}<a class="nav-link" href="/receiving">Receiving</a>{% endif %}
+                {% if access['inventory.read'] %}<a class="nav-link" href="/inventory">Inventory</a>{% endif %}
+                {% if access['catalogue.read'] %}<a class="nav-link" href="/catalogue/products">Catalogue</a>{% endif %}
                     <a class="nav-link" href="/workspaces">Switch workspace</a>
                     {% if access['workspace.manage'] %}<a class="nav-link" href="/settings/company">Company & branches</a>{% endif %}
                     {% if access['users.manage'] %}<a class="nav-link" href="/settings/members">Members</a>{% endif %}

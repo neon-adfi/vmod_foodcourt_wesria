@@ -1,0 +1,37 @@
+title = "Purchasing"
+url = "/purchasing"
+layout = "default"
+[identity]
+view = "layout"
+[purchasing]
+kind = "orders"
+==
+<div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }}</div><h1>Purchase orders</h1></div>
+{% if record or filters.new %}<a class="btn btn-outline-secondary mb-4" href="/purchasing">All purchase orders</a>{% else %}{% partial 'document-list' path='purchasing' title='purchase orders' %}{% endif %}
+{% if record %}
+<section class="card mb-4" id="document-detail"><div class="card-body"><h2>{{ record.number }} <span class="badge bg-blue-lt">{{ record.state }}</span></h2><p>{{ record.revision.supplier_snapshot.name }} · {{ record.revision.document_date }} · Revision {{ record.revision.number }} · {{ record.revision.currency }} · {{ record.revision.price_mode }}</p>
+<div class="table-responsive"><table class="table"><thead><tr><th>Item</th><th>Ordered</th><th>Received</th><th>Remaining</th><th>Unit price</th><th>Tax</th><th>Total</th></tr></thead><tbody>{% for row in progressLines %}<tr><td>{{ row.item.snapshot.description }} · {{ row.item.snapshot.package_name }}</td><td>{{ row.item.quantity }}</td><td>{{ row.received }}</td><td>{{ row.remaining }}</td><td>{{ row.item.snapshot.unit_price }}</td><td>{{ row.item.tax }}</td><td>{{ row.item.gross }}</td></tr>{% endfor %}</tbody></table></div>
+<p id="document-totals"><strong>Net {{ record.revision.net }} · Tax {{ record.revision.tax }} · Total {{ record.revision.gross }}</strong></p>
+{% if record.first_received_at %}<p class="text-secondary">Receiving has begun. Commercial revisions are locked, including after corrections.</p>{% endif %}
+{% if record.state == 'draft' and access['purchaseorder.approve'] %}{% partial 'document-action' handler='onApprove' label='Approve saved revision' %}{% endif %}
+{% if record.state == 'approved' and not record.first_received_at and access['purchaseorder.write'] and access['purchaseorder.approve'] %}{% partial 'document-action' handler='onReopen' label='Reopen to draft' reason=true %}{% endif %}
+{% if record.state in ['draft','approved'] and not record.first_received_at and access['purchaseorder.close'] %}{% partial 'document-action' handler='onVoid' label='Void PO' reason=true %}{% endif %}
+{% if record.state in ['approved','partially_received'] and record.first_received_at and access['purchaseorder.close'] %}{% partial 'document-action' handler='onCloseShort' label='Close remaining quantity' reason=true %}{% endif %}
+{% if record.state in ['approved','partially_received'] and access['goodsreceipt.read'] and access['goodsreceipt.write'] %}<a class="btn btn-primary" href="/receiving?new=1&po={{ record.id }}">Create goods receipt</a>{% endif %}
+{% if access['goodsreceipt.read'] %}<h3 class="mt-4">Receipts</h3>{% for receipt in receipts %}<div><a href="/receiving?id={{ receipt.id }}">{{ receipt.number }}</a> · {{ receipt.supplier_reference }} · {{ receipt.state }}</div>{% else %}<p>No receipts yet.</p>{% endfor %}{% endif %}
+<details class="mt-4"><summary>Revision history</summary>{% for revision in record.revisions %}<div class="border-top py-3"><strong>Revision {{ revision.number }}</strong> · {{ revision.created_at }} · {{ revision.approved_at ? 'Approved' : 'Draft snapshot' }} · {{ revision.currency }} {{ revision.gross }}<div>{{ revision.supplier_snapshot.name }} · {{ revision.price_mode }}</div>{% for item in revision.items %}<div class="small">{{ item.snapshot.description }} · {{ item.quantity }} × {{ item.snapshot.unit_price }} · Tax {{ item.snapshot.tax_rate }}% · {{ item.gross }}{% if item.snapshot.price_reason %} · Reason: {{ item.snapshot.price_reason }}{% endif %}</div>{% endfor %}</div>{% endfor %}</details>
+</div></section>{% endif %}
+{% if access['purchaseorder.write'] and ((filters.new and not record) or record.state == 'draft') %}
+<section class="card" id="document-editor"><div class="card-body"><h2>{{ record ? 'Edit draft' : 'New purchase order' }}</h2>
+<form id="purchase-form" data-request="purchasing::onSaveOrder" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" data-document-form method="post">
+{% partial 'form-errors' %}<input type="hidden" name="operation_key" value="{{ operationKey }}"><input type="hidden" name="expected_currency" value="{{ workspaceMember.company.currency }}">
+{% if record %}<input type="hidden" name="id" value="{{ record.id }}"><input type="hidden" name="version" value="{{ record.version }}"><input type="hidden" name="supplier_id" value="{{ record.supplier_id }}"><input type="hidden" name="branch_id" value="{{ record.branch_id }}"><p>Supplier and branch are fixed. Void and create another PO to change them.</p>
+{% else %}<div class="row g-3"><div class="col-md-6"><label class="form-label" for="po-supplier">Supplier</label><select id="po-supplier" name="supplier_id" class="form-select" required data-po-supplier><option value="">Choose supplier</option>{% for supplier in suppliers %}<option value="{{ supplier.id }}">{{ supplier.name }}</option>{% endfor %}</select></div><div class="col-md-6"><label class="form-label" for="po-branch">Branch</label><select id="po-branch" name="branch_id" class="form-select" required>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}</option>{% endfor %}</select></div></div>{% endif %}
+<div class="row g-3 my-2"><div class="col-md-6"><label class="form-label" for="po-date">Order date</label><input class="form-control" id="po-date" type="date" name="document_date" value="{{ record ? record.revision.document_date : today }}" required></div><div class="col-md-6"><label class="form-label" for="po-mode">Price mode</label><select class="form-select" id="po-mode" name="price_mode"><option value="exclusive" {{ record.revision.price_mode != 'inclusive' ? 'selected' }}>Tax exclusive</option><option value="inclusive" {{ record.revision.price_mode == 'inclusive' ? 'selected' }}>Tax inclusive</option></select></div></div>
+<p class="text-secondary small">Mode and tax changes preserve the before-tax price basis. Agreed prices are entered in the selected mode. Preview recalculates prices and totals.</p>
+<div data-document-rows>{% if record %}{% for item in record.revision.items %}{% partial 'purchase-line' item=item index=loop.index0 %}{% endfor %}{% else %}{% partial 'purchase-line' index=0 %}{% endif %}</div>
+<template data-row-template>{% partial 'purchase-line' index='__INDEX__' item=null %}</template><button class="btn btn-outline-secondary mb-3" type="button" data-add-row>Add line</button>
+<label class="form-label" for="po-notes">Notes</label><textarea id="po-notes" name="notes" class="form-control" maxlength="2000">{{ record.revision.notes }}</textarea>
+{% for field in ['branch_id','supplier_id','document_date','price_mode','notes','lines','expected_currency','version','operation_key'] %}<div class="invalid-feedback d-block" data-validate-for="{{ field }}"></div>{% endfor %}
+<div id="purchase-preview" class="mt-3" aria-live="polite"></div><div class="d-flex gap-2 mt-3"><button type="button" class="btn btn-outline-primary" data-request="purchasing::onPreview">Preview totals</button><button type="submit" class="btn btn-primary">Save draft</button></div>
+</form></div></section>{% endif %}

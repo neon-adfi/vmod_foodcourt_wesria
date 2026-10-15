@@ -1,3 +1,6 @@
 1.0.1:
     - Create company catalogue and branch stock locations
     - create_catalogue_tables.php
+1.0.2:
+    - Add purchasing revisions receipts and immutable stock ledger
+    - create_purchasing_stock_tables.php

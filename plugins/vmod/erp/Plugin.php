@@ -11,6 +11,7 @@ class Plugin extends \System\Classes\PluginBase
 
     public function registerComponents()
     {
-        return [\Vmod\Erp\Components\Catalogue::class => 'catalogue'];
+        return [\Vmod\Erp\Components\Catalogue::class => 'catalogue',
+            \Vmod\Erp\Components\Purchasing::class => 'purchasing', \Vmod\Erp\Components\Inventory::class => 'inventory'];
     }
 }

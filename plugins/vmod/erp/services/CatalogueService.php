@@ -45,7 +45,8 @@ class CatalogueService
             if ($record->exists && $data['base_uom'] !== $record->base_uom) {
                 // A locking read is essential after waiting: REPEATABLE READ may already hold an older auth snapshot.
                 $package = ProductPackage::where('company_id', $actor->company_id)->where('product_id', $record->id)->lockForUpdate()->first();
-                abort_if($package, 409, 'Base UOM is locked after the first package. Create a replacement product.');
+                $movement = \Vmod\Erp\Models\StockMovement::where('company_id', $actor->company_id)->where('product_id', $record->id)->sharedLock()->first();
+                abort_if($package || $movement, 409, 'Base UOM is locked after the first package or stock movement. Create a replacement product.');
             }
             return $this->save($record, $data, 'products', $actor);
         });
