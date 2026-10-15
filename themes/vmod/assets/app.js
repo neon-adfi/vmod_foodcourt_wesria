@@ -47,6 +47,11 @@ function reindexDocumentRows(form) {
     });
 }
 function filterOffers(form) {
+    const branch = form.querySelector('[name="branch_id"]')?.value;
+    form.querySelectorAll('[data-sales-location] option[data-branch]').forEach(option => {
+        option.disabled = option.hidden = !!branch && option.dataset.branch !== branch;
+        if (option.disabled && option.selected) option.parentElement.value = '';
+    });
     const supplier = form.querySelector('[name="supplier_id"]')?.value;
     form.querySelectorAll('[data-offer-select] option[data-supplier]').forEach(option => {
         option.disabled = option.hidden = !!supplier && option.dataset.supplier !== supplier;
@@ -66,7 +71,7 @@ document.addEventListener('click', event => {
 document.addEventListener('change', event => {
     const form = event.target.closest('form');
     if (!form) return;
-    if (event.target.matches('[data-po-supplier]')) filterOffers(form);
+    if (event.target.matches('[data-po-supplier], [data-sales-branch]')) filterOffers(form);
     if (event.target.matches('[data-reverse-only]')) {
         form.querySelectorAll('[data-document-rows] input, [data-document-rows] select, [data-add-row], [data-remove-row]').forEach(field => { field.disabled = event.target.checked; });
     }

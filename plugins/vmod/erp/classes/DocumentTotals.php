@@ -31,6 +31,18 @@ class DocumentTotals
         return self::decimal($base, 'quantity', true);
     }
 
+    public static function convertUnitPrice(string $price, string $sourceMode, string $sourceTax, string $mode, string $tax): string
+    {
+        $net = BigDecimal::of($price)->toBigRational();
+        if ($sourceMode === 'inclusive') {
+            $net = $net->dividedBy(BigDecimal::of($sourceTax)->dividedBy('100', 6)->plus('1'));
+        }
+        if ($mode === 'inclusive') {
+            $net = $net->multipliedBy(BigDecimal::of($tax)->dividedBy('100', 6)->plus('1'));
+        }
+        return self::decimal((string) $net->toScale(4, RoundingMode::HalfUp), 'unit_price');
+    }
+
     public static function calculate(array $lines, string $priceMode): array
     {
         if (!array_is_list($lines) || !in_array($priceMode, ['exclusive', 'inclusive'], true)) {

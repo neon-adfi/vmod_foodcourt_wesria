@@ -1,8 +1,6 @@
 <?php namespace Vmod\Erp\Services;
 
 use DB;
-use Brick\Math\BigDecimal;
-use Brick\Math\RoundingMode;
 use October\Rain\Exception\ValidationException;
 use Vmod\Core\Classes\Workspace;
 use Vmod\Core\Models\Company;
@@ -236,7 +234,7 @@ class PurchasingService
             }
             if ($action === 'override') {
                 $price = DocumentTotals::decimal($line['unit_price'] ?? null, "lines.$index.unit_price");
-                $offered = $this->converted($snapshot['offered_price'], 'exclusive', '0', $input['price_mode'], $snapshot['tax_rate']);
+                $offered = DocumentTotals::convertUnitPrice($snapshot['offered_price'], 'exclusive', '0', $input['price_mode'], $snapshot['tax_rate']);
                 if ($price !== $offered && trim($line['price_reason'] ?? '') === '') {
                     throw new ValidationException(["lines.$index.price_reason" => 'Explain the price override.']);
                 }
@@ -251,24 +249,12 @@ class PurchasingService
             } catch (ValidationException $e) {
                 throw new ValidationException(["lines.$index.quantity" => 'Base quantity must be exact to four decimals and within range.']);
             }
-            $snapshot['unit_price'] = $this->converted($snapshot['source_price'], $snapshot['source_mode'], $snapshot['source_tax_rate'], $input['price_mode'], $snapshot['tax_rate']);
+            $snapshot['unit_price'] = DocumentTotals::convertUnitPrice($snapshot['source_price'], $snapshot['source_mode'], $snapshot['source_tax_rate'], $input['price_mode'], $snapshot['tax_rate']);
             $lines[] = $snapshot;
         }
         return ['branch_id' => $branchId, 'supplier_id' => $supplier->id, 'supplier_snapshot' => $po ? $po->revision->supplier_snapshot : $supplier->only(['id', 'code', 'name', 'email', 'phone', 'address']),
             'document_date' => $input['document_date'], 'notes' => $input['notes'] ?? null, 'currency' => $company->currency,
             'price_mode' => $input['price_mode'], 'lines' => $lines, 'amounts' => DocumentTotals::calculate($lines, $input['price_mode'])];
-    }
-
-    private function converted(string $price, string $sourceMode, string $sourceTax, string $mode, string $tax): string
-    {
-        $net = BigDecimal::of($price)->toBigRational();
-        if ($sourceMode === 'inclusive') {
-            $net = $net->dividedBy(BigDecimal::of($sourceTax)->dividedBy('100', 6)->plus('1'));
-        }
-        if ($mode === 'inclusive') {
-            $net = $net->multipliedBy(BigDecimal::of($tax)->dividedBy('100', 6)->plus('1'));
-        }
-        return DocumentTotals::decimal((string) $net->toScale(4, RoundingMode::HalfUp), 'unit_price');
     }
 
     private function revision(PurchaseOrder $po, array $data, int $actorId): void

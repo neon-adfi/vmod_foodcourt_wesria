@@ -98,3 +98,12 @@ Browser acceptance uses `tests/e2e/seed-phase3.php` (owned local CLI only) and `
 The focused ERP command above now runs 14 tests/197 assertions. `tests/vmod/check-purchasing-concurrency.php` takes the same private observer credential on stdin and forces nine exact MySQL waits, then reconciles balances with movements. The adjacent catalogue harness still passes all six waits. The final aggregate run passes 47 Vmod tests/305 assertions, five Core races and the framework suite with its four existing SQLite skips.
 
 Browser acceptance uses the guarded additive `tests/e2e/seed-phase4.php` and `tests/e2e/phase4.mjs`. Keep `/private/tmp/wesria-phase4-acceptance.json` private with mode 0600. Resume an interrupted browser run using `globalThis.vmodE2eSpaceId`; never create a replacement TaskSpace to recover an error. This acceptance used TaskSpace 28 throughout and finished it after all 12 scenarios and eight screenshot inspections. Use fresh additive fixture companies when repeating one-time opening entries; preserve previous stock, movement and document history. Stop before Phase 5. No commit, push or deployment was performed.
+
+
+## Phase 5 continuation
+
+Phase 5 is qualified locally on the same served checkout and owned services; see [Phase 5 evidence](evidence/phase-5-sales-reservations-2026-10-15.md). Core remains `1.0.3`; ERP `1.0.3` adds six sales/delivery/reservation tables, balance reservations and delivery movement identities. Preserve existing data; no reset or deployment is part of this work.
+
+Run the guarded `tests/vmod/check-sales-concurrency.php` with the same private observer-stdin invocation as the purchasing harness. It forces twelve exact MySQL waits and reconciles physical stock, line reservations and delivery consumption. The affected nine purchasing and six catalogue waits also pass. The focused ERP suite passes 26 tests / 440 assertions; the single final aggregate run passes 59 Vmod tests / 548 assertions and five Core races, with the framework’s four existing SQLite skips unchanged.
+
+Browser acceptance uses `tests/e2e/seed-phase5.php` and `tests/e2e/phase5.mjs`. Seed only in the owned local runtime and keep its JSON at `/private/tmp/wesria-phase5-acceptance.json` with mode 0600. TaskSpace 33 completed nine scenario groups, ten inspected screenshots and zero JavaScript runtime errors; it was finished after inspection. Reuse a space while resuming a run; future independent acceptance starts a new run. Additive fixture records remain. Stop before Phase 6.

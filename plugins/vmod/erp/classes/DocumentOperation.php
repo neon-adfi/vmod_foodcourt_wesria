@@ -7,7 +7,7 @@ use Vmod\Core\Classes\Workspace;
 use Vmod\Core\Models\Company;
 use Vmod\Core\Models\Audit;
 
-// Shared only by the three document/stock services; this is not a workflow or generic CRUD layer.
+// Shared by explicit document/stock operations; this is not a workflow or generic CRUD layer.
 class DocumentOperation
 {
     public static function run(string $action, string $permission, array $input, callable $scope, callable $write, array $extraPermissions = [])

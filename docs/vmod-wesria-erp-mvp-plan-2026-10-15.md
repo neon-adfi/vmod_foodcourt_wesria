@@ -28,7 +28,7 @@
 | 2 | Frontend identity, workspace and permission foundation | Complete — isolated MySQL and egolite acceptance; see Phase 2 evidence |
 | 3 | ERP master data, decimal totals and tax snapshots | Complete — forced-wait MySQL and egolite acceptance; see Phase 3 evidence |
 | 4 | Purchasing, receiving and inbound stock | Complete locally — MySQL, egolite and independent review pass |
-| 5 | Sales approval reservations and partial dispatch | Not started |
+| 5 | Sales approval reservations and partial dispatch | Complete locally |
 | 6 | Complete ERP UI, references, printing and acceptance | Not started |
 
 At phase completion, change only that row and append an evidence entry under section 8. A row is complete only after all of its mandatory gates pass. If interrupted, record the completed work and remaining check; the next run rechecks files and resumes instead of recreating them. A blocked check is not a pass. The recommended prompt runs one phase per invocation.
@@ -204,20 +204,42 @@ Use the smallest regression check that fails when the phase's non-trivial behavi
 - Native Tabler list/detail/form screens preserve errors/input/focus, use existing CSRF/workspace protection and saved-draft review before approval/confirmation. Attachments, sales/reservations, accounting and printing remain outside Phase 4.
 - Completion requires focused ERP checks; forced/observed independent-process MySQL waits for first balance, duplicate confirmation, over-receipt, closure, adjustment/correction, numbering, revocation and first stock/UOM; aggregate composer test; scoped PHPCS/syntax/whitespace; egolite with inspected screenshots/runtime errors; independent review. No commit, push or deployment.
 
-### Phase 5 — SO reservation and partial DO dispatch
+### Phase 5 — Sales, reservations and dispatch
 
-**Files:** ERP sales/delivery/document-line and line-reservation models/migrations; sales/dispatch/reservation services; sales/delivery screens; `tests/SalesReservationTest.php`; `tests/mysql_stock_check.php`.
-**Consumes:** Core authorization, commercial snapshots and Phase 4 stock/balance posting.
-**Produces:** the confirmed SO-approval reservation and DO-dispatch contract in section 2. Bind every reservation to a concrete authorized SO line/location; reject generic/unrelated owners and actor impersonation.
+**Baseline:** `1197f9b`. **Status:** complete locally. Scoped Git delivery was subsequently authorized; no deployment or Phase 6.
 
-- [ ] Add the 10-on-hand / reserve-6 / dispatch-2 / release-4 example as a runnable regression, asserting balances and movement counts at every step.
-- [ ] Implement all-or-nothing approval, explicit pre-dispatch reopen/reapproval, partial DO dispatch, short-close/release, cancellation and guarded correction/replacement.
-- [ ] Test two distinct lines containing the same product, multiple DOs against one line, wrong-order reservation consumption, mismatched retry payloads, repeated approval/dispatch/release and stale document revision.
-- [ ] Extend Phase 4 negative-adjustment/GRN-correction checks: reserving 6 from on-hand 10 must reject a reduction of 5 and permit a reduction of 4. Existing reservations cannot be spent by adjustments or other orders.
-- [ ] Run real MySQL concurrency checks using independent connections/processes synchronized by a barrier: competing approvals for scarce stock; concurrent partial dispatches exceeding the same reservation; replayed posting; cancellation versus dispatch. Assert invariants and unique physical movements, not timing alone.
-- [ ] Verify the UI separately labels on-hand, reserved and available, shows the reserved location, and reports failed approval/dispatch without misleading success.
+**Structure:** ordinary SO/immutable revision/item, DO/item and line-reservation models. Two new services (`SalesService`, `DispatchService`); explicit internal `reserve`, `release`, `postDispatch` operations extend `StockService`. Reuse `DocumentOperation`, counters, Workspace, Audit, Brick and native October/Tabler forms. No separate reservation coordinator, workflow framework or dependencies.
 
-**Gate:** no overselling under concurrency; approval leaves physical stock unchanged; dispatch consumes only its exact reservation once; partials/corrections/releases preserve quantities and history. SQLite-only results cannot complete this phase.
+**Confirmed commercial rules:**
+- Customer and branch become fixed after the first draft save. Every saved line requires an active authorized source location in that branch.
+- New lines require an active package with a non-null catalogue sales price; zero is valid, blank unavailable even for an override. Overrides require a reason.
+- Ordinary edits retain commercial snapshots. Selected-line repricing uses active priced masters and creates an audited revision. Shared `DocumentTotals::convertUnitPrice` retains the exact source price/mode/tax anchor, uses rational arithmetic and rounds only the displayed unit price to four decimals. `calculate()` stays unchanged.
+- Approval requires current active customer/product/package/location and a non-null current catalogue price, without replacing saved price/tax snapshots. It approves the saved revision and reserves every line atomically, or leaves all lines unreserved and the SO draft.
+- Reopening before any dispatch requires write plus approve and a reason; release reservations, void draft DOs and create a fresh revision. Void draft or never-dispatched approved SOs. After dispatch, close-short releases the complete remainder. Preserve `first_dispatch_at` permanently, including after full reversal.
+
+**Stock and delivery rules:**
+- Store one reservation per approved revision item, its fixed location and approved/effectively dispatched/released base quantities. Retain released history. Aggregate demand for duplicate product/location lines.
+- Add `reserved DECIMAL(19,4)` to balances. Maintain `available = on_hand - reserved`, `on_hand >= reserved >= 0`, and balance reservations equal summed outstanding line reservations. Approval/release post no physical movements. Dispatch decreases physical and reserved quantities equally.
+- Existing adjustments and GRN corrections must preserve reservations. Internal posting takes server-loaded domain records inside the owning transaction; submitted actors, owners, balances and signed deltas are not authority.
+- DOs reference one SO's exact approved revision/items, inherit customer details and fixed source locations, and have generated numbers, a required date and optional notes. No external-reference system. A saved draft has no stock effect; dispatch rechecks outstanding own-line reservations.
+- Approved reservations remain dispatchable after customer/product/package/location retirement. Corrections reverse a current DO and optionally post a linked complete replacement atomically. Only that SO's approved lines and their fixed locations may be used. Restore original consumption before testing replacement quantities; check final net balances per stock key while recording complete immutable reversal/replacement movements. Smaller replacement or full reversal restores the difference as reserved stock.
+- Recompute effective progress. Full reversal can return to approved but never unlocks commercial revision. Manual void/close-short blocks dispatch and correction. Add unique delivery-item/action movement identities while retaining receipt identities.
+
+**Transaction and UI contract:**
+- Context/permission precede payload validation; shared company lock is the first transactional read, followed by fresh authorization. Lock operation identity, parent SO, children/reservations, sorted masters/products/locations, then sorted stock keys. Use current locking reads and unique missing-balance creation.
+- Scope and authorize before replay; matching action-specific UUID/fingerprint retries return the prior result before stale-version rejection, changed input returns 409. Documents/reservations/balances/ledger/audit commit together. Native counters generate SO/DO numbers without recycling or yearly reset.
+- One explicit sales component provides `/sales` and `/delivery` searchable paginated list/detail/form/history views. Reuse native row/error JavaScript, preserve inputs/focus and saved-draft review before approval/dispatch. Workflow selectors require workflow permission, not `catalogue.read`. Approval needs `salesorder.approve`; reopening also needs `salesorder.write`.
+- Reads are company/authorized-branch scoped. SO details expose only their order quantities/reservations. Stock totals require `inventory.read`; inventory shows on-hand, reserved and available. Keep action permissions separate.
+
+**Acceptance gates:**
+- [x] Domain/lifecycle checks: exact quantities/overflow, zero/blank prices, reasoned override and drift-free conversions, frozen snapshots/repricing, approval eligibility/retirement, isolation/permissions/stale context/version, matching/changed/revoked retries, atomic audit rollback; duplicate products/split locations/multiple DOs, wrong-order consumption, reopen/reapproval, terminal closure and full-reversal history lock.
+- [x] Prove `10 on-hand → reserve 6 → dispatch 2 → release 4`, with movement counts. Reject reductions of 5 and permit 4 from on-hand 10/reserved 6 through adjustment and GRN correction. Reconcile both ledgers and unique physical posting identities.
+- [x] Forced MySQL waits: independently running processes identify the exact blocking connection/table before release. Cover scarce approvals, approval/dispatch replay, over-dispatch, closure/dispatch, approvals versus adjustment/GRN correction, correction/stock writes, permission revocation; run affected prior harnesses.
+- [x] Focused ERP suite then one final `composer test`; scoped PHPCS, JavaScript syntax and tracked/new-file whitespace.
+- [x] Egolite on the verified served checkout/runtime/schema: save/reload, pricing/repricing, failed/successful approval, partial/full dispatch, replay rejection, reopening/close-short, corrections/full reversal, retirement, protected adjustments, search/pagination, restricted access, stale context/version and real CSRF using otherwise-valid requests; keyboard/focus/mobile, inspected screenshot hashes and runtime errors.
+- [x] Independent review and exact evidence in [Phase 5 evidence](evidence/phase-5-sales-reservations-2026-10-15.md).
+
+**Gate:** mark complete only after MySQL, egolite and independent review pass. Preserve additive data if interrupted and list remaining checks. Stop before Phase 6.
 
 ### Phase 6 — Operational UI, references, printing and acceptance
 
@@ -273,3 +295,9 @@ After the foundation is accepted, plan supplier/customer portals, advanced prici
 **2026-10-15 — Phase 4 complete (local qualification).** Purchasing, partial/full receiving, reference-chain corrections/full reversal, opening stock and adjustments are implemented with immutable commercial revisions and an append-only reconciled ledger. ERP 1.0.2 adds ten tables in the owned dev/test schemas; Core remains 1.0.3. Focused ERP passes **14 tests/197 assertions**. Nine purchasing races force and observe exact MySQL waits; all six adjacent catalogue races pass. The single final aggregate run passes **47 Vmod tests/305 assertions**, eleven unsafe-target guards, five Core races and the framework suite (421 executed/425 total, 2,287 assertions, four unchanged SQLite skips). Egolite TaskSpace 28 passes **12 scenarios**, with **eight inspected screenshots** and zero JavaScript runtime errors. Final development reconciliation finds zero balance mismatches or duplicate receipt postings. Independent review's reopen-audit finding is repaired and verified; scoped PHPCS, JavaScript syntax and tracked/new-file whitespace pass. [Phase 4 evidence](evidence/phase-4-purchasing-stock-2026-10-15.md) records the exact files, runtime/schema identities, commands, race outcomes, repairs and screenshot hashes. Implementation acceptance completed without commit/push/deployment. The user subsequently authorized the scoped Phase 4 commit and fast-forward push on `main`, including the existing Phase 3 commit; verify remote ancestry before delivery. **No deployment. Stopped before Phase 5.**
 
 Append one compact entry per executed phase with: date; exact target checkout/runtime; changed files; schema/database scope; commands and pass/fail counts; MySQL/browser proof where required; unresolved limitations; next phase. Include commit IDs only if commits were separately requested. Never mark a skipped, blocked or historical check as freshly passed.
+
+
+**2026-10-15 — Phase 5 complete (local qualification, uncommitted).** Sales revisions/repricing, atomic line/location reservations, partial/full delivery, corrections/full reversal and permanent dispatch history lock are implemented with two explicit services and StockService extensions. ERP `1.0.3` adds six tables plus balance/movement fields. Focused ERP passes **26 tests/440 assertions**. Twelve exact sales waits, nine affected purchasing waits and six adjacent catalogue waits pass; physical and reserved balances reconcile. The single final aggregate run passes **59 Vmod tests/548 assertions**, eleven unsafe-target guards and five Core races; framework 421 executed/425 total, 2,287 assertions, four unchanged SQLite skips. Egolite TaskSpace 33 passes **nine scenario groups**, **ten inspected screenshots** and zero JavaScript runtime errors. Independent review found one component-registration defect, repaired with a failing-first regression check and verified rendered/AJAX workflows. Scoped PHPCS, JavaScript and tracked/new-file whitespace pass. [Phase 5 evidence](evidence/phase-5-sales-reservations-2026-10-15.md) records the exact manifest, runtime/schema, commands, waits, reconciliation and screenshot hashes. **No commit, push or deployment. Stopped before Phase 6.**
+
+
+**Phase 5 Git delivery authorization:** after local acceptance the user requested commit, merge and push. The exact 33-file manifest is authorized for `main`; local and remote pre-release heads match `1197f9b`, so no separate merge is needed. See the [delivery custody record](evidence/phase-5-sales-reservations-2026-10-15.md#separately-authorized-git-delivery). This does not authorize deployment or Phase 6.

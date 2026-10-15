@@ -1,0 +1,33 @@
+title = "Delivery"
+url = "/delivery"
+layout = "default"
+[identity]
+view = "layout"
+[sales]
+kind = "deliveries"
+==
+<div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }}</div><h1>Delivery orders</h1><p class="text-secondary">Saved drafts do not affect stock. Dispatch consumes this sales order’s reservations.</p></div>
+{% if record or filters.new %}<a class="btn btn-outline-secondary mb-4" href="/delivery">All delivery orders</a>{% else %}{% partial 'document-list' path='delivery' title='delivery orders' %}{% endif %}
+{% if access['deliveryorder.write'] and not so %}<div class="card mb-4"><div class="card-body"><h2 class="h3">Dispatch a sales order</h2><form method="get"><input type="hidden" name="new" value="1"><label class="form-label" for="delivery-so">Approved SO</label><select id="delivery-so" name="so" class="form-select mb-3" required><option value="">Choose a SO</option>{% for order in availableOrders %}<option value="{{ order.id }}">{{ order.number }} · {{ order.revision.customer_snapshot.name }}</option>{% endfor %}</select><button class="btn btn-primary">Create delivery order</button></form></div></div>{% endif %}
+{% if so %}<p><strong>{{ so.number }} · {{ so.revision.customer_snapshot.name }}</strong> · {{ so.state|replace({'_':' '}) }}</p>{% endif %}
+{% if record %}<section class="card mb-4" id="document-detail"><div class="card-body"><h2>{{ record.number }} <span class="badge bg-blue-lt">{{ record.state }}</span></h2><p>{{ record.document_date }}{% if record.notes %} · {{ record.notes }}{% endif %}</p>
+<div class="table-responsive"><table class="table"><thead><tr><th>Item</th><th>Quantity</th><th>Base quantity</th><th>Location</th></tr></thead><tbody>{% for item in record.items %}<tr><td>{{ item.sales_item.snapshot.description }} · {{ item.sales_item.snapshot.package_name }}</td><td>{{ item.quantity }}</td><td>{{ item.base_quantity }} {{ item.sales_item.snapshot.base_uom }}</td><td>{{ item.sales_item.snapshot.location_name }}</td></tr>{% endfor %}</tbody></table></div>
+{% if record.reason %}<p>Correction reason: {{ record.reason }}</p>{% endif %}
+{% if record.state == 'draft' and access['deliveryorder.dispatch'] and so.state in ['approved','partially_delivered','completed'] %}{% partial 'document-action' actionComponent='sales' handler='onDispatch' label='Dispatch saved delivery' %}{% endif %}
+<h3 class="h4">Delivery history</h3>{% for delivery in deliveries %}{% if delivery.root_id == record.root_id %}<div><a href="/delivery?id={{ delivery.id }}">{{ delivery.number }}</a> · {{ delivery.state }}{% if delivery.replaces_id %} · replacement{% endif %}</div>{% endif %}{% endfor %}
+</div></section>{% endif %}
+{% set correcting = record.state == 'dispatched' and access['deliveryorder.correct'] and so.state in ['approved','partially_delivered','completed'] %}
+{% if so and ((not record and filters.new and access['deliveryorder.write']) or (record.state == 'draft' and access['deliveryorder.write'] and so.state in ['approved','partially_delivered','completed']) or correcting) %}
+<section class="card" id="document-editor"><div class="card-body"><h2>{{ correcting ? 'Correct dispatched delivery' : (record ? 'Edit draft delivery' : 'New delivery order') }}</h2>
+{% if correcting %}<p class="text-secondary">Enter the complete replacement delivery. Its stock difference is checked before the reversal and replacement are posted together. Source locations remain fixed to the approved sales lines.</p>{% endif %}
+<form id="delivery-form" data-request="sales::{{ correcting ? 'onCorrect' : 'onSaveDelivery' }}" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" data-document-form method="post">
+{% partial 'form-errors' %}<input type="hidden" name="operation_key" value="{{ operationKey }}"><input type="hidden" name="sales_order_id" value="{{ so.id }}">
+{% if record %}<input type="hidden" name="id" value="{{ record.id }}"><input type="hidden" name="version" value="{{ record.version }}">{% endif %}
+<label class="form-label" for="delivery-date">Delivery date</label><input id="delivery-date" type="date" name="document_date" class="form-control mb-3" value="{{ record ? record.document_date : today }}" required>
+<label class="form-label" for="delivery-notes">Notes (optional)</label><textarea id="delivery-notes" name="notes" class="form-control mb-3" maxlength="2000">{{ record.notes }}</textarea>
+<div data-document-rows>{% if record %}{% for item in record.items %}{% partial 'delivery-line' item=item index=loop.index0 %}{% endfor %}{% else %}{% partial 'delivery-line' item=null index=0 %}{% endif %}</div>
+<template data-row-template>{% partial 'delivery-line' item=null index='__INDEX__' %}</template><button type="button" class="btn btn-outline-secondary mb-3" data-add-row>Add line</button>
+{% if correcting %}<label class="form-label" for="correction-reason">Correction reason</label><textarea id="correction-reason" name="reason" class="form-control mb-3" required maxlength="2000"></textarea><label class="form-check mb-3"><input class="form-check-input" type="checkbox" name="reverse_only" value="1" data-reverse-only><span class="form-check-label">Reverse the entire delivery without a replacement</span></label>{% endif %}
+{% for field in ['notes', 'sales_order_id','document_date','reason','lines','version','operation_key'] %}<div class="invalid-feedback d-block" data-validate-for="{{ field }}"></div>{% endfor %}
+<button type="submit" class="btn {{ correcting ? 'btn-outline-danger' : 'btn-primary' }}">{{ correcting ? 'Post correction' : 'Save draft delivery' }}</button>
+</form></div></section>{% endif %}

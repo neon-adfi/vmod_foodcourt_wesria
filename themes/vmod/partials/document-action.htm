@@ -1,4 +1,4 @@
-<form data-request="purchasing::{{ handler }}" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post" class="mb-3">
+<form data-request="{{ actionComponent|default('purchasing') }}::{{ handler }}" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post" class="mb-3">
 {% partial 'form-errors' %}<input type="hidden" name="id" value="{{ record.id }}"><input type="hidden" name="version" value="{{ record.version }}"><input type="hidden" name="operation_key" value="{{ operationKey }}">
 {% if reason %}<label class="form-label" for="reason-{{ handler }}">{{ label }} reason</label><textarea id="reason-{{ handler }}" class="form-control mb-2" name="reason" required maxlength="2000"></textarea><div data-validate-for="reason" class="invalid-feedback d-block"></div>{% endif %}
 <button type="submit" class="btn {{ reason ? 'btn-outline-danger' : 'btn-primary' }}">{{ label }}</button>

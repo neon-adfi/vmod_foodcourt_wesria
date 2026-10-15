@@ -4,3 +4,6 @@
 1.0.2:
     - Add purchasing revisions receipts and immutable stock ledger
     - create_purchasing_stock_tables.php
+1.0.3:
+    - Add sales revisions reservations and delivery stock posting
+    - create_sales_reservation_tables.php
