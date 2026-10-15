@@ -4,3 +4,6 @@
 1.0.2:
     - Use native database locks for CMS session blocking
     - create_session_locks.php
+1.0.3:
+    - Add company currency and permanent first-price lock
+    - add_company_currency.php

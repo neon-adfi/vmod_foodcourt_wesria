@@ -52,13 +52,22 @@ class AdministrationService
 
     public function saveCompany(array $input): Company
     {
-        $data = Validator::make($input, ['name' => 'required|string|max:255'])->validate();
-        return $this->mutate('workspace.manage', function ($actor) use ($data) {
+        return $this->mutate('workspace.manage', function ($actor) use ($input) {
             abort_unless($actor->isFullAdministrator(), 403);
+            $data = Validator::make($input, [
+                'name' => 'required|string|max:255',
+                'currency' => 'sometimes|required|string|regex:/^[A-Z]{3}$/D',
+                'expected_currency' => 'required_with:currency|string|size:3',
+            ])->validate();
             $company = Company::findOrFail($actor->company_id);
-            $before = $company->name;
+            if (isset($data['currency'])) {
+                abort_unless($data['expected_currency'] === $company->currency, 409, 'Currency changed. Reload before saving.');
+                abort_if($company->currency_locked_at && $data['currency'] !== $company->currency, 409, 'Currency is locked because a catalogue price has been saved.');
+            }
+            unset($data['expected_currency']);
+            $before = $company->only(['name', 'currency']);
             $company->update($data);
-            Audit::record($company->id, 'company.updated', ['before' => $before, 'name' => $company->name], $actor->user_id);
+            Audit::record($company->id, 'company.updated', ['before' => $before, 'after' => $company->only(['name', 'currency'])], $actor->user_id);
             return $company;
         });
     }

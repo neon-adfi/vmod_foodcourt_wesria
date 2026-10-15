@@ -13,7 +13,13 @@ view = "company"
 <form data-request="workspaces::onCompany" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">
     {% partial 'form-errors' %}
     <label class="form-label" for="company-name">Company name</label><input class="form-control" id="company-name" name="name" value="{{ workspaceMember.company.name }}" required maxlength="255">
-    <div class="invalid-feedback d-block" data-validate-for="name"></div><p class="text-secondary small mt-2">Company code: {{ workspaceMember.company.code }}</p><button class="btn btn-primary" type="submit">Save company</button>
+    <div class="invalid-feedback d-block" data-validate-for="name"></div><p class="text-secondary small mt-2">Company code: {{ workspaceMember.company.code }}</p>
+    <label class="form-label" for="company-currency">Currency code</label>
+    <input class="form-control" id="company-currency" name="currency" value="{{ workspaceMember.company.currency }}" required maxlength="3" pattern="[A-Z]{3}" {{ workspaceMember.company.currency_locked_at ? 'readonly' }} aria-describedby="currency-help">
+    <input type="hidden" name="expected_currency" value="{{ workspaceMember.company.currency }}">
+    <div class="invalid-feedback d-block" data-validate-for="currency"></div><div class="invalid-feedback d-block" data-validate-for="expected_currency"></div>
+    <p class="text-secondary small mt-2" id="currency-help">{{ workspaceMember.company.currency_locked_at ? 'Currency is locked because a catalogue price has been saved.' : 'Use a three-letter currency code, such as MYR. Amounts use two decimal places. Currency locks when the first price is saved.' }}</p>
+    <button class="btn btn-primary" type="submit">Save company</button>
 </form>
 {% else %}<p>{{ workspaceMember.company.name }}</p><p class="text-secondary">Company details are managed by a full-access administrator.</p>{% endif %}
 </div></div></div>

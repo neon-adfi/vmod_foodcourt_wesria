@@ -82,3 +82,11 @@ ego-browser nodejs < tests/e2e/phase2.mjs
 The Git safe-directory setting is command-local, not a global Git configuration change. The seed verifies CLI/local/owned database identity before writes and creates only synthetic records. Treat its private JSON as a secret; never print or publish it. The browser runner uses native Node assertions, reads local log mail privately, and writes only sanitized evidence. It creates a TaskSpace for a new run; use `globalThis.vmodE2eSpaceId` to resume the same space after failure, then finish it after screenshot inspection. This acceptance used space 22 throughout.
 
 Native `MAIL_MAILER=log` is the local sink for invitations and recovery. Successful local acceptance proves rendering, token handling and application state; it does not prove external transport or inbox delivery. See [Phase 2 evidence](evidence/phase-2-core-2026-10-15.md) for commands, results, checksums and boundaries.
+
+## Phase 3 catalogue
+
+`Vmod.Erp` 1.0.1 and Core 1.0.3 are applied additively to the owned dev/test schemas. `/catalogue/products` provides native Tabler master-data screens; company settings now own currency and its permanent first-price lock. Phase 3 is complete locally; see [exact commands, forced waits and browser evidence](evidence/phase-3-catalogue-2026-10-15.md).
+
+The focused runner is `php vendor/bin/phpunit -c plugins/vmod/erp/phpunit.xml --do-not-cache-result` in `php-test`. Aggregate `composer test` discovers ERP tests. The separate guarded `tests/vmod/check-erp-concurrency.php` needs the owned `mysql-test` observer credential privately on stdin to read `performance_schema.data_lock_waits`; application writes retain the schema-limited user. It releases held rows only after observing the exact wait, never on timing alone. No schema reset or privilege grant is needed.
+
+Browser acceptance uses `tests/e2e/seed-phase3.php` (owned local CLI only) and `tests/e2e/phase3.mjs`; private seed JSON is `/private/tmp/wesria-phase3-acceptance.json` with mode 0600. This run used and finished TaskSpace 25 after nine screenshot inspections. If an acceptance attempt has already saved a price, use a fresh additive synthetic company to repeat the initially-unlocked currency scenario; never clear a permanent lock or reset existing data. Stop before Phase 4.

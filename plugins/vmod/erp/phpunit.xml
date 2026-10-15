@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<phpunit bootstrap="../../../tests/vmod/bootstrap.php" colors="true" failOnWarning="true" failOnRisky="true">
+    <testsuites><testsuite name="Vmod ERP"><directory>tests</directory></testsuite></testsuites>
+    <php>
+        <env name="CACHE_STORE" value="array" force="true"/>
+        <env name="SESSION_DRIVER" value="array" force="true"/>
+        <env name="ENABLE_CSRF" value="true" force="true"/>
+        <env name="STORAGE_PATH" value="/tmp/wesria-vmod-storage" force="true"/>
+        <env name="CACHE_PATH" value="/tmp/wesria-vmod-cache" force="true"/>
+    </php>
+</phpunit>

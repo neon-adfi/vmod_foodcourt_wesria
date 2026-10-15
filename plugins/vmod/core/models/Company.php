@@ -3,5 +3,5 @@
 class Company extends \Model
 {
     public $table = 'vmod_core_companies';
-    protected $fillable = ['code', 'name'];
+    protected $fillable = ['code', 'name', 'currency'];
 }
