@@ -89,3 +89,47 @@ document.addEventListener('ajax:setup', event => {
     }
 });
 document.querySelectorAll('[data-document-form]').forEach(filterOffers);
+
+function invoiceKinds() {
+    const form = document.querySelector('#invoice-form');
+    if (!form) return;
+    const direction = form.querySelector('[name="direction"]').value;
+    const select = form.querySelector('[name="kind"]');
+    for (const option of select.options) option.disabled = option.hidden = option.dataset.direction !== direction;
+    if (select.selectedOptions[0]?.disabled) select.value = direction === 'purchase' ? 'po' : 'so';
+}
+function reindexInvoiceLinks() {
+    document.querySelectorAll('[data-invoice-link]').forEach((row, index) => {
+        row.querySelectorAll('input').forEach(input => { input.name = input.name.replace(/links\[\d+\]/, `links[${index}]`); });
+    });
+}
+document.addEventListener('click', event => {
+    const add = event.target.closest('[data-invoice-add]');
+    const remove = event.target.closest('[data-invoice-remove]');
+    if (add) {
+        const list = document.querySelector('#invoice-selected');
+        const existing = [...list.children].find(row => row.dataset.kind === add.dataset.kind && row.dataset.id === add.dataset.id);
+        if (existing) { existing.querySelector('button').focus(); return; }
+        const row = document.createElement('li');
+        row.className = 'd-flex gap-2 align-items-center mb-2';
+        Object.assign(row.dataset, { invoiceLink: '', kind: add.dataset.kind, id: add.dataset.id });
+        const label = document.createElement('span');
+        label.textContent = `${add.dataset.kind.toUpperCase()} ${add.dataset.number} · ${add.dataset.date}`;
+        row.append(label);
+        for (const [field, value] of Object.entries({ kind: add.dataset.kind, id: add.dataset.id, revision_id: add.dataset.revision })) {
+            const input = document.createElement('input');
+            input.type = 'hidden'; input.name = `links[0][${field}]`; input.value = value; row.append(input);
+        }
+        const button = document.createElement('button');
+        button.type = 'button'; button.className = 'btn btn-sm btn-outline-secondary'; button.dataset.invoiceRemove = '';
+        button.textContent = 'Remove'; button.setAttribute('aria-label', `Remove ${add.dataset.number}`); row.append(button);
+        list.append(row); reindexInvoiceLinks(); button.focus();
+    }
+    if (remove) { remove.closest('[data-invoice-link]').remove(); reindexInvoiceLinks(); document.querySelector('#ref-search').focus(); }
+});
+document.addEventListener('change', event => {
+    if (event.target.closest('#invoice-form') && ['direction', 'branch_id', 'party_id', 'kind'].includes(event.target.name)) {
+        invoiceKinds(); document.querySelector('#invoice-choices').replaceChildren();
+    }
+});
+invoiceKinds();

@@ -26,6 +26,7 @@ description = "Vmod application"
                 {% if access['goodsreceipt.read'] %}<a class="nav-link" href="/receiving">Receiving</a>{% endif %}
                 {% if access['salesorder.read'] %}<a class="nav-link" href="/sales">Sales</a>{% endif %}
                 {% if access['deliveryorder.read'] %}<a class="nav-link" href="/delivery">Delivery</a>{% endif %}
+                {% if access['invoice_reference.read'] %}<a class="nav-link" href="/invoice-references">Invoice references</a>{% endif %}
                 {% if access['inventory.read'] %}<a class="nav-link" href="/inventory">Inventory</a>{% endif %}
                 {% if access['catalogue.read'] %}<a class="nav-link" href="/catalogue/products">Catalogue</a>{% endif %}
                     <a class="nav-link" href="/workspaces">Switch workspace</a>

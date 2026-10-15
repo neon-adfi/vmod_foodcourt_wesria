@@ -178,7 +178,7 @@ class ReceivingService
             } catch (ValidationException $e) {
                 throw new ValidationException(["lines.$index.quantity" => 'Base quantity must be exact to four decimals and within range.']);
             }
-            $lines[] = ['purchase_order_item_id' => $item->id, 'location_id' => $location->id, 'quantity' => $quantity, 'base_quantity' => $base];
+            $lines[] = ['purchase_order_item_id' => $item->id, 'location_id' => $location->id, 'location_name' => $location->name, 'quantity' => $quantity, 'base_quantity' => $base];
         }
         return $lines;
     }

@@ -268,8 +268,11 @@ class SalesService
 
     private function revision(SalesOrder $so, array $data, int $actorId): void
     {
+        $issuer = $so->revision_id ? $so->revision->issuer_snapshot : null;
+        $issuer = $issuer ?: ['company' => Company::findOrFail($so->company_id)->name,
+            'branch' => \Vmod\Core\Models\Branch::where('company_id', $so->company_id)->findOrFail($so->branch_id)->name];
         $revision = SalesOrderRevision::create(array_intersect_key($data, array_flip(['document_date', 'notes', 'currency', 'price_mode', 'customer_snapshot']))
-            + $data['amounts']['totals'] + ['sales_order_id' => $so->id, 'number' => (int) SalesOrderRevision::where('sales_order_id', $so->id)->max('number') + 1,
+            + $data['amounts']['totals'] + ['issuer_snapshot' => $issuer, 'sales_order_id' => $so->id, 'number' => (int) SalesOrderRevision::where('sales_order_id', $so->id)->max('number') + 1,
                 'actor_user_id' => $actorId, 'created_at' => now()]);
         foreach ($data['lines'] as $index => $snapshot) {
             SalesOrderItem::create(['revision_id' => $revision->id, 'position' => $index + 1, 'product_id' => $snapshot['product_id'],

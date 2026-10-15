@@ -1,0 +1,23 @@
+title = "Document preview"
+url = "/documents/:kind/:id/print"
+layout = "print"
+[documentPrint]
+==
+<div class="print-actions"><a class="btn btn-outline-secondary" href="/{{ document.back_path }}?id={{ document.id }}">Back to document</a><button class="btn btn-primary" type="button" onclick="window.print()">Print / Save as PDF</button></div>
+<article class="print-document" id="document-print">
+<header class="print-header"><div><h1>{{ document.title }}</h1><p class="print-number">{{ document.number }}</p></div><div><strong>{{ document.issuer.company }}</strong><div>{{ document.issuer.branch }}</div></div></header>
+{% if document.issuer_missing %}<p class="snapshot-notice">Historical snapshot unavailable; current value shown (issuer).</p>{% endif %}
+<div class="print-status">{{ document.state|replace({'_':' '})|upper }}{% if document.historical %} · HISTORICAL REVISION{% endif %}</div>
+<p>Date: {{ document.document_date }} · {% if document.commercial %}Revision {{ document.revision_number }} · {{ document.approved ? 'Approved revision' : 'DRAFT — not approved' }}{% else %}Source: {{ document.parent_number }} · Revision {{ document.revision_number }}{% endif %}</p>
+{% if document.previous %}<p>Replaces {{ document.previous }}</p>{% endif %}{% if document.replacement %}<p>Replaced by {{ document.replacement }}</p>{% endif %}
+<section class="print-party"><strong>{{ document.party.name }}</strong><div class="preserve-lines">{{ document.party.address }}</div><div>{{ document.party.email }}{% if document.party.phone %} · {{ document.party.phone }}{% endif %}</div></section>
+{% if document.supplier_reference %}<p>Supplier delivery reference: {{ document.supplier_reference }}</p>{% endif %}
+{% if document.commercial %}<p>{{ document.currency }} · {{ document.price_mode == 'inclusive' ? 'Tax-inclusive prices' : 'Tax-exclusive prices' }}</p>{% endif %}
+<div class="print-table-wrap" tabindex="0" role="region" aria-label="Document line items"><table class="print-table"><thead><tr><th>Item / package</th><th>Quantity</th>{% if document.commercial %}<th>Unit price</th><th>Net</th><th>Tax</th><th>Total</th>{% else %}<th>Base quantity</th><th>Location</th>{% endif %}</tr></thead><tbody>
+{% for line in document.lines %}<tr><td>{{ line.description }}<div class="small">{{ line.package }}</div></td><td>{{ line.quantity }}{% if document.commercial %}<div class="small">{{ line.base_quantity }} {{ line.base_uom }}</div>{% endif %}</td>{% if document.commercial %}<td>{{ line.unit_price }}</td><td>{{ line.net }}</td><td>{{ line.tax }}<div class="small">{{ line.tax_label }} {{ line.tax_rate }}%</div></td><td>{{ line.gross }}</td>{% else %}<td>{{ line.base_quantity }} {{ line.base_uom }}</td><td>{{ line.location }}{% if line.location_missing %}<div class="snapshot-notice">Historical snapshot unavailable; current value shown.</div>{% endif %}</td>{% endif %}</tr>{% endfor %}
+</tbody></table></div>
+{% if document.commercial %}<dl class="print-totals"><div><dt>Net</dt><dd>{{ document.currency }} {{ document.totals.net }}</dd></div><div><dt>Tax</dt><dd>{{ document.currency }} {{ document.totals.tax }}</dd></div><div><dt>Total</dt><dd>{{ document.currency }} {{ document.totals.gross }}</dd></div></dl>{% endif %}
+{% if document.notes %}<section><h2>Notes</h2><p class="preserve-lines">{{ document.notes }}</p></section>{% endif %}
+{% if document.reason %}<section><h2>Correction / closure reason</h2><p class="preserve-lines">{{ document.reason }}</p></section>{% endif %}
+<footer class="print-footer">Operational document · {{ document.number }}{% if document.commercial %} · Revision {{ document.revision_number }}{% endif %}</footer>
+</article>

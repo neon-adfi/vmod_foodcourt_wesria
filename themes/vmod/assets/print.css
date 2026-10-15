@@ -1,0 +1,32 @@
+body { background: #eef1f4; color: #17212b; }
+.print-actions { max-width: 210mm; margin: 1.5rem auto; display: flex; gap: .75rem; padding: 0 1rem; }
+.print-document { max-width: 210mm; margin: 0 auto 2rem; background: white; padding: 15mm; overflow-wrap: anywhere; }
+.print-header { display: flex; justify-content: space-between; gap: 1.5rem; border-bottom: 2px solid #175c75; padding-bottom: 1rem; margin-bottom: 1rem; }
+.print-header h1 { font-size: 1.65rem; margin-bottom: .25rem; }
+.print-number { font-size: 1.2rem; margin: 0; }
+.print-status { font-weight: 700; letter-spacing: .08em; border: 1px solid #617384; padding: .5rem; margin-bottom: .75rem; }
+.print-party { margin: 1.5rem 0; }
+.preserve-lines { white-space: pre-wrap; }
+.print-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.print-table th, .print-table td { padding: .65rem .4rem; border-bottom: 1px solid #ccd4db; vertical-align: top; text-align: right; }
+.print-table th:first-child, .print-table td:first-child { text-align: left; min-width: 8rem; }
+.print-table thead { display: table-header-group; }
+.print-totals { margin: 1.25rem 0 1.5rem auto; max-width: 20rem; }
+.print-totals div { display: flex; justify-content: space-between; gap: 1rem; padding: .3rem 0; }
+.print-totals div:last-child { border-top: 2px solid #175c75; font-weight: bold; }
+.print-totals dd { margin: 0; }
+.print-document h2 { font-size: 1rem; }
+.print-footer { border-top: 1px solid #ccd4db; margin-top: 2rem; padding-top: .75rem; color: #526373; font-size: .75rem; }
+.snapshot-notice { font-size: .75rem; color: #745516; }
+@media screen and (max-width: 600px) { .print-document { padding: 1rem; } .print-header { flex-direction: column; gap: .5rem; } .print-table-wrap { overflow-x: auto; } .print-table { min-width: 600px; } }
+@page { size: A4; margin: 12mm; }
+@media print {
+    body { background: white; font-size: 10pt; }
+    .print-actions { display: none; }
+    .print-document { margin: 0; padding: 0; max-width: none; }
+    .print-header { flex-direction: row; }
+    .print-table-wrap { overflow: visible; }
+    .print-table { font-size: 9pt; }
+    .print-table tr, .print-totals, .print-party { break-inside: avoid; }
+    h1, h2 { break-after: avoid; }
+}

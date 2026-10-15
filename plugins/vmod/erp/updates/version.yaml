@@ -7,3 +7,6 @@
 1.0.3:
     - Add sales revisions reservations and delivery stock posting
     - create_sales_reservation_tables.php
+1.0.4:
+    - Add operational invoice references and historical print names
+    - create_invoice_references.php

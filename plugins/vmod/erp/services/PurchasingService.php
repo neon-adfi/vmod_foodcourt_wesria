@@ -259,8 +259,11 @@ class PurchasingService
 
     private function revision(PurchaseOrder $po, array $data, int $actorId): void
     {
+        $issuer = $po->revision_id ? $po->revision->issuer_snapshot : null;
+        $issuer = $issuer ?: ['company' => Company::findOrFail($po->company_id)->name,
+            'branch' => \Vmod\Core\Models\Branch::where('company_id', $po->company_id)->findOrFail($po->branch_id)->name];
         $revision = PurchaseOrderRevision::create(array_intersect_key($data, array_flip(['document_date', 'notes', 'currency', 'price_mode', 'supplier_snapshot']))
-            + $data['amounts']['totals'] + ['purchase_order_id' => $po->id, 'number' => (int) PurchaseOrderRevision::where('purchase_order_id', $po->id)->max('number') + 1,
+            + $data['amounts']['totals'] + ['issuer_snapshot' => $issuer, 'purchase_order_id' => $po->id, 'number' => (int) PurchaseOrderRevision::where('purchase_order_id', $po->id)->max('number') + 1,
                 'actor_user_id' => $actorId, 'created_at' => now()]);
         foreach ($data['lines'] as $index => $snapshot) {
             PurchaseOrderItem::create(['revision_id' => $revision->id, 'position' => $index + 1, 'product_id' => $snapshot['product_id'],
