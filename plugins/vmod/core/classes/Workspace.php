@@ -23,6 +23,7 @@ class Workspace
 
     public static function assertContext(): void
     {
+        abort_unless(Auth::getUser(), 401, 'Your session has expired. Sign in again before continuing.');
         $expected = Session::get('vmod.context');
         $submitted = Request::header('X-Workspace-Context');
         abort_unless(is_string($expected) && is_string($submitted) && hash_equals($expected, $submitted), 409, 'Workspace changed. Reload this page before saving.');
@@ -40,6 +41,7 @@ class Workspace
 
     public static function membership(): Membership
     {
+        abort_unless(Auth::getUser(), 401, 'Your session has expired. Sign in again before continuing.');
         $member = self::findMembership((int) Session::get('vmod.company_id'));
         abort_unless($member, 403, 'You do not have access to this workspace.');
         $branchId = self::branchId();

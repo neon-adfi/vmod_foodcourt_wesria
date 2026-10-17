@@ -3,7 +3,6 @@
 use Flash;
 use Redirect;
 use Validator;
-use October\Rain\Exception\ValidationException;
 use Vmod\Core\Classes\Workspace;
 use Vmod\Core\Facades\Auth;
 use Vmod\Erp\Services\CatalogueService;
@@ -30,9 +29,14 @@ class Catalogue extends \Cms\Classes\ComponentBase
         $kinds = ['parties' => 'Customers & suppliers', 'products' => 'Products', 'packages' => 'Packages', 'offers' => 'Supplier offers', 'tax_rates' => 'Tax rates', 'locations' => 'Stock locations'];
         $kind = $this->param('kind') ?: 'products';
         abort_unless(isset($kinds[$kind]), 404);
-        $validator = Validator::make(get(), ['q' => 'nullable|string|max:100', 'status' => 'nullable|in:active,inactive,all', 'edit' => 'nullable|integer|min:1', 'new' => 'nullable|in:1', 'page' => 'nullable|integer|min:1']);
+        $queryRules = ['q' => 'nullable|string|max:100', 'status' => 'nullable|in:active,inactive,all', 'edit' => 'nullable|integer|min:1', 'new' => 'nullable|in:1', 'page' => 'nullable|integer|min:1'];
+        $validator = Validator::make(get(), $queryRules);
         if ($validator->fails()) {
-            throw new ValidationException($validator);
+            $this->controller->setStatusCode(400);
+            $this->page['queryErrors'] = $validator->errors()->toArray();
+            $this->page['queryValues'] = array_map(fn ($value) => is_scalar($value) ? (string) $value : '', array_intersect_key(get(), $queryRules));
+            $this->page['queryPath'] = \Request::url();
+            return;
         }
         $filters = $validator->validated();
         $service = new CatalogueService;

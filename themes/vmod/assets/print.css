@@ -9,7 +9,11 @@ body { background: #eef1f4; color: #17212b; }
 .preserve-lines { white-space: pre-wrap; }
 .print-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .print-table th, .print-table td { padding: .65rem .4rem; border-bottom: 1px solid #ccd4db; vertical-align: top; text-align: right; }
-.print-table th:first-child, .print-table td:first-child { text-align: left; min-width: 8rem; }
+.print-table:not(.print-commercial) th:first-child, .print-table:not(.print-commercial) td:first-child { text-align: left; min-width: 8rem; }
+.print-commercial { table-layout: fixed; font-size: 8pt; }
+.print-commercial th, .print-commercial td { padding-left: .25rem; padding-right: .25rem; }
+.print-commercial .print-description { text-align: left; border-bottom: 0; padding-bottom: .1rem; }
+.print-number-value, .print-totals dd { white-space: nowrap; overflow-wrap: normal; font-variant-numeric: tabular-nums; }
 .print-table thead { display: table-header-group; }
 .print-totals { margin: 1.25rem 0 1.5rem auto; max-width: 20rem; }
 .print-totals div { display: flex; justify-content: space-between; gap: 1rem; padding: .3rem 0; }
@@ -27,6 +31,7 @@ body { background: #eef1f4; color: #17212b; }
     .print-header { flex-direction: row; }
     .print-table-wrap { overflow: visible; }
     .print-table { font-size: 9pt; }
-    .print-table tr, .print-totals, .print-party { break-inside: avoid; }
+    .print-commercial { font-size: 8pt; }
+    .print-table tbody, .print-table tr, .print-totals, .print-party { break-inside: avoid; }
     h1, h2 { break-after: avoid; }
 }

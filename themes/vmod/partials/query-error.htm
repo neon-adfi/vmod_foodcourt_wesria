@@ -1,0 +1,14 @@
+<section id="query-error" aria-labelledby="query-error-title">
+    <h1 id="query-error-title">Check the page filters</h1>
+    <p class="text-secondary">No results were loaded. Correct the values below or reset the filters.</p>
+    <form method="get" action="{{ queryPath }}" class="card card-body">
+        {% for name, value in queryValues %}
+        <div class="mb-3">
+            <label class="form-label" for="query-{{ name }}">{{ name|replace({'_': ' '})|capitalize }}</label>
+            <input id="query-{{ name }}" name="{{ name }}" value="{{ value }}" class="form-control {{ queryErrors[name] ? 'is-invalid' }}" {% if queryErrors[name] %}aria-invalid="true" aria-describedby="query-{{ name }}-error"{% endif %}>
+            {% if queryErrors[name] %}<div id="query-{{ name }}-error" class="invalid-feedback">{{ queryErrors[name]|join(' ') }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        <div class="d-flex gap-2"><button class="btn btn-primary" type="submit">Apply corrected filters</button><a class="btn btn-outline-secondary" href="{{ queryPath }}">Reset filters</a></div>
+    </form>
+</section>

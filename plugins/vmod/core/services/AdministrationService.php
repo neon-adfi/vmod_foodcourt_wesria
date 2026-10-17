@@ -120,7 +120,7 @@ class AdministrationService
                     $this->assertGrantScope($actor, $role, $invitation->branch_ids);
                 }
             }
-            abort_if(array_diff($data['permissions'], $actor->role->permissions ?? []), 403);
+            abort_if(array_diff($data['permissions'], $actor->role->permissions ?? []), 403, 'You can only grant permissions you hold. Reload and choose from the available permissions.');
             Validator::make($data, [
                 'name' => ['required', Rule::unique('vmod_core_roles')->where('company_id', $actor->company_id)->ignore($id)],
             ])->validate();

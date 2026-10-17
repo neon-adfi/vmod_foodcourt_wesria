@@ -433,4 +433,20 @@ class WorkspaceAccessTest extends ApplicationTestCase
             \Mail::swap($mail);
         }
     }
+
+    public function testSignedOutContextDiffersFromStaleWorkspaceAndDeniedPermission(): void
+    {
+        $company = $this->company();
+        $this->acting($company);
+        $this->app['auth']->logout();
+        $this->denied(fn () => Workspace::assertContext(), 401);
+        $this->denied(fn () => Workspace::membership(), 401);
+        Workspace::clear();
+        $this->denied(fn () => Workspace::assertContext(), 401);
+        $this->acting($company);
+        \Request::instance()->headers->set('X-Workspace-Context', 'stale');
+        $this->denied(fn () => Workspace::assertContext(), 409);
+        \Request::instance()->headers->set('X-Workspace-Context', Workspace::token());
+        $this->denied(fn () => Workspace::authorize('unknown.permission'), 403);
+    }
 }

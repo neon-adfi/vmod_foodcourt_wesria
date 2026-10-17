@@ -24,8 +24,17 @@ class InvoiceReferences extends \Cms\Classes\ComponentBase
             return Redirect::to('/auth');
         }
         $actor = Workspace::authorize('invoice_reference.read');
-        $filters = Op::validate(get(), ['id' => 'nullable|integer|min:1', 'new' => 'nullable|in:1', 'q' => 'nullable|string|max:100',
-            'state' => 'nullable|in:active,voided,all', 'direction' => 'nullable|in:purchase,sales', 'page' => 'nullable|integer|min:1']);
+        $queryRules = ['id' => 'nullable|integer|min:1', 'new' => 'nullable|in:1', 'q' => 'nullable|string|max:100',
+            'state' => 'nullable|in:active,voided,all', 'direction' => 'nullable|in:purchase,sales', 'page' => 'nullable|integer|min:1'];
+        $validator = \Validator::make(get(), $queryRules);
+        if ($validator->fails()) {
+            $this->controller->setStatusCode(400);
+            $this->page['queryErrors'] = $validator->errors()->toArray();
+            $this->page['queryValues'] = array_map(fn ($value) => is_scalar($value) ? (string) $value : '', array_intersect_key(get(), $queryRules));
+            $this->page['queryPath'] = \Request::url();
+            return;
+        }
+        $filters = $validator->validated();
         $service = new InvoiceReferenceService;
         $record = empty($filters['id']) ? null : $service->find((int) $filters['id']);
         $query = Op::scoped(InvoiceReference::class, $actor)->with('party');
@@ -60,6 +69,7 @@ class InvoiceReferences extends \Cms\Classes\ComponentBase
     public function onChoices()
     {
         $this->page['choices'] = (new InvoiceReferenceService)->choices(post());
+        $this->page['choiceScope'] = array_intersect_key(post(), array_flip(['branch_id', 'party_id', 'direction']));
         return ['#invoice-choices' => $this->renderPartial('invoice-choices')];
     }
 

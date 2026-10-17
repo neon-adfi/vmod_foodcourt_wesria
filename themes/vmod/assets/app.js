@@ -11,7 +11,10 @@ document.addEventListener('ajax:setup', event => {
             options.data = { ...options.data, expected_base_uom: product.selectedOptions[0]?.dataset.baseUom ?? '' };
         }
     }
-    document.querySelector('#request-error')?.classList.add('d-none');
+    if (event.detail.context.handler !== 'invoiceReferences::onChoices') {
+        document.querySelector('#request-error')?.classList.add('d-none');
+        document.querySelectorAll('[data-request-notice].alert-success, .flash-message.success').forEach(notice => notice.remove());
+    }
     event.target.closest?.('form')?.querySelectorAll('.is-invalid').forEach(field => field.classList.remove('is-invalid'));
 });
 window.addEventListener('ajax:invalid-field', event => {
@@ -27,17 +30,58 @@ document.addEventListener('ajax:before-validate', event => {
     const { fields, message } = event.detail;
     if (!message || Object.keys(fields ?? {}).length) return;
     // Native validation handles field errors; keep non-field conflicts visible after the flash disappears.
-    const error = document.querySelector('#request-error');
-    error.textContent = message;
-    error.classList.remove('d-none');
-    error.focus();
+    showRequestError(message);
 });
 window.addEventListener('ajax:error-message', event => {
     event.preventDefault();
+    showRequestError(event.detail.message);
+});
+
+function showRequestError(message, recovery = false, kind = '') {
     const error = document.querySelector('#request-error');
-    error.textContent = event.detail.message;
+    if (!error) return;
+    error.textContent = message;
+    error.dataset.errorKind = kind;
+    if (recovery) {
+        const url = new URL(location.href);
+        const key = url.pathname.startsWith('/catalogue/') ? 'edit' : 'id';
+        const id = url.searchParams.get(key);
+        const recordUrl = url.pathname + (/^[1-9]\d*$/.test(id ?? '') ? `?${key}=${id}` : '');
+        for (const [label, href] of [['Sign in', '/auth'], ['Check saved records', recordUrl]]) {
+            const link = document.createElement('a');
+            link.textContent = label; link.href = href; link.target = '_blank'; link.rel = 'noopener';
+            link.className = 'd-inline-block me-3 mt-2'; error.append(document.createTextNode(' '), link);
+        }
+    }
     error.classList.remove('d-none');
     error.focus();
+}
+document.addEventListener('ajax:request-error', event => {
+    const { responseCode, context } = event.detail;
+    const lookup = context.handler === 'invoiceReferences::onChoices';
+    let message;
+    if (responseCode === 419) message = 'Your security token has expired. This request was rejected.';
+    else if (responseCode === 401) message = 'Your session has expired. This request was rejected.';
+    else if (responseCode <= 0) message = lookup
+        ? 'Documents could not be loaded. Try Find documents again.'
+        : 'The connection failed. Save outcome unknown. Check saved records before retrying.';
+    if (!message) return;
+    event.preventDefault();
+    const recovery = !lookup || responseCode === 401 || responseCode === 419;
+    if (recovery) message += ' If sign-in is needed, sign in in another tab, verify your workspace and open a fresh form. Keep this tab to copy your entered values.';
+    showRequestError(message, recovery, lookup && !recovery ? 'lookup' : '');
+});
+window.addEventListener('ajax:before-send', event => { event.detail.context.requestSent = true; });
+document.addEventListener('ajax:request-cancel', event => {
+    const context = event.detail.context;
+    // Confirmation dismissal precedes sending; only sent mutations have an unknown outcome.
+    if (!context.requestSent || context.handler === 'invoiceReferences::onChoices') return;
+    showRequestError('The request was cancelled. Save outcome unknown. Check saved records before retrying. If sign-in is needed, sign in in another tab, verify your workspace and open a fresh form. Keep this tab to copy your entered values.', true);
+});
+document.addEventListener('ajax:request-success', event => {
+    if (event.detail.context.handler === 'invoiceReferences::onChoices') {
+        document.querySelector('#request-error[data-error-kind="lookup"]')?.classList.add('d-none');
+    }
 });
 
 function reindexDocumentRows(form) {
@@ -63,10 +107,20 @@ document.addEventListener('click', event => {
     const remove = event.target.closest('[data-remove-row]');
     const form = (add ?? remove)?.closest('form');
     if (!form) return;
-    if (add) form.querySelector('[data-document-rows]').append(form.querySelector('[data-row-template]').content.cloneNode(true));
-    if (remove) remove.closest('[data-document-row]').remove();
+    let focusRow;
+    if (add) {
+        const rows = form.querySelector('[data-document-rows]');
+        rows.append(form.querySelector('[data-row-template]').content.cloneNode(true));
+        focusRow = rows.lastElementChild;
+    }
+    if (remove) {
+        const row = remove.closest('[data-document-row]');
+        focusRow = row.nextElementSibling ?? row.previousElementSibling;
+        row.remove();
+    }
     reindexDocumentRows(form);
     filterOffers(form);
+    (focusRow?.querySelector('input:not([type="hidden"]):not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled)') ?? form.querySelector('[data-add-row]'))?.focus();
 });
 document.addEventListener('change', event => {
     const form = event.target.closest('form');
@@ -112,7 +166,7 @@ document.addEventListener('click', event => {
         if (existing) { existing.querySelector('button').focus(); return; }
         const row = document.createElement('li');
         row.className = 'd-flex gap-2 align-items-center mb-2';
-        Object.assign(row.dataset, { invoiceLink: '', kind: add.dataset.kind, id: add.dataset.id });
+        Object.assign(row.dataset, { invoiceLink: '', kind: add.dataset.kind, id: add.dataset.id, branch: add.dataset.branch, party: add.dataset.party, direction: add.dataset.direction });
         const label = document.createElement('span');
         label.textContent = `${add.dataset.kind.toUpperCase()} ${add.dataset.number} · ${add.dataset.date}`;
         row.append(label);
@@ -123,13 +177,55 @@ document.addEventListener('click', event => {
         const button = document.createElement('button');
         button.type = 'button'; button.className = 'btn btn-sm btn-outline-secondary'; button.dataset.invoiceRemove = '';
         button.textContent = 'Remove'; button.setAttribute('aria-label', `Remove ${add.dataset.number}`); row.append(button);
-        list.append(row); reindexInvoiceLinks(); button.focus();
+        list.append(row); reindexInvoiceLinks(); validateInvoiceLinks(); button.focus();
     }
-    if (remove) { remove.closest('[data-invoice-link]').remove(); reindexInvoiceLinks(); document.querySelector('#ref-search').focus(); }
+    if (remove) { remove.closest('[data-invoice-link]').remove(); reindexInvoiceLinks(); validateInvoiceLinks(); document.querySelector('#ref-search').focus(); }
 });
 document.addEventListener('change', event => {
     if (event.target.closest('#invoice-form') && ['direction', 'branch_id', 'party_id', 'kind'].includes(event.target.name)) {
-        invoiceKinds(); document.querySelector('#invoice-choices').replaceChildren();
+        invoiceKinds(); validateInvoiceLinks(); document.querySelector('#invoice-choices').replaceChildren();
     }
 });
 invoiceKinds();
+
+function invoiceScope(form) {
+    return ['branch_id', 'party_id', 'direction'].map(name => form.elements[name].value);
+}
+function validateInvoiceLinks() {
+    const form = document.querySelector('#invoice-form');
+    if (!form) return true;
+    const [branch, party, direction] = invoiceScope(form);
+    let valid = true;
+    form.querySelectorAll('[data-invoice-link]').forEach(row => {
+        const mismatch = row.dataset.branch !== branch || row.dataset.party !== party || row.dataset.direction !== direction;
+        let warning = row.querySelector('[data-link-warning]');
+        if (mismatch && !warning) {
+            warning = document.createElement('span'); warning.dataset.linkWarning = '';
+            warning.className = 'text-danger'; warning.textContent = 'Incompatible branch, counterparty or direction. Remove this link or restore its original scope.';
+            row.append(warning);
+        }
+        if (!mismatch) warning?.remove();
+        valid &&= !mismatch;
+    });
+    if (valid) document.querySelector('#request-error[data-error-kind="invoice-scope"]')?.classList.add('d-none');
+    return valid;
+}
+document.addEventListener('ajax:setup', event => {
+    const form = event.target.closest?.('#invoice-form');
+    if (!form) return;
+    const context = event.detail.context;
+    if (context.handler === 'invoiceReferences::onChoices') {
+        context.invoiceScope = JSON.stringify([...invoiceScope(form), form.elements.kind.value, form.elements.q.value]);
+    } else if (context.handler === 'invoiceReferences::onSave' && !validateInvoiceLinks()) {
+        event.preventDefault();
+        showRequestError('Remove incompatible document links or restore their original scope before saving.', false, 'invoice-scope');
+    }
+});
+document.addEventListener('ajax:before-update', event => {
+    const context = event.detail.context;
+    const form = document.querySelector('#invoice-form');
+    if (context.handler === 'invoiceReferences::onChoices' && form && context.invoiceScope !== JSON.stringify([...invoiceScope(form), form.elements.kind.value, form.elements.q.value])) {
+        event.preventDefault();
+    }
+});
+validateInvoiceLinks();

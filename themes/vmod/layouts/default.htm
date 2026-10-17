@@ -8,7 +8,7 @@ description = "Vmod application"
     <meta name="referrer" content="same-origin">
     <title>{{ this.page.title }} · Vmod</title>
     <link href="{{ 'assets/tabler.min.css'|theme }}" rel="stylesheet">
-    <link href="{{ 'assets/app.css'|theme }}" rel="stylesheet">
+    <link href="{{ 'assets/app.css'|theme }}?v=20261018-1" rel="stylesheet">
     {% styles %}
 </head>
 <body>
@@ -20,7 +20,7 @@ description = "Vmod application"
             {% if currentUser %}
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#main-nav" aria-controls="main-nav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
             <nav class="collapse navbar-collapse" id="main-nav" aria-label="Main navigation">
-                <div class="navbar-nav me-auto">
+                <div class="navbar-nav me-auto flex-wrap">
                     <a class="nav-link" href="/">Overview</a>
                     {% if access['purchaseorder.read'] %}<a class="nav-link" href="/purchasing">Purchasing</a>{% endif %}
                 {% if access['goodsreceipt.read'] %}<a class="nav-link" href="/receiving">Receiving</a>{% endif %}
@@ -44,15 +44,15 @@ description = "Vmod application"
     </header>
     <main class="page-wrapper" id="main" tabindex="-1">
         <div class="container-xl py-4">
-            {% flash %}<div class="alert alert-{{ type == 'error' ? 'danger' : type }}" role="status">{{ message }}</div>{% endflash %}
+            {% flash %}<div data-request-notice class="alert alert-{{ type == 'error' ? 'danger' : type }}" role="status">{{ message }}</div>{% endflash %}
             <div id="request-error" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
-            {% page %}
+            {% if queryErrors %}{% partial 'query-error' %}{% else %}{% page %}{% endif %}
         </div>
     </main>
     <footer class="footer footer-transparent"><div class="container-xl text-secondary small">Vmod · Workspaces & ERP</div></footer>
 </div>
 {% framework extras %}
-<script type="module" src="{{ 'assets/app.js'|theme }}"></script>
+<script type="module" src="{{ 'assets/app.js'|theme }}?v=20261018-1"></script>
 {% scripts %}
 </body>
 </html>

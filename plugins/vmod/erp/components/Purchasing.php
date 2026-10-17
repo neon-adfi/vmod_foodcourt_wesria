@@ -31,8 +31,17 @@ class Purchasing extends \Cms\Classes\ComponentBase
         $kind = $this->property('kind', 'orders');
         $permission = $kind === 'receipts' ? 'goodsreceipt.read' : 'purchaseorder.read';
         $actor = Workspace::authorize($permission);
-        $filters = Op::validate(get(), ['q' => 'nullable|string|max:100', 'state' => 'nullable|in:draft,approved,partially_received,completed,confirmed,voided,closed_short',
-            'id' => 'nullable|integer|min:1', 'new' => 'nullable|in:1', 'po' => 'nullable|integer|min:1', 'page' => 'nullable|integer|min:1']);
+        $queryRules = ['q' => 'nullable|string|max:100', 'state' => 'nullable|in:draft,approved,partially_received,completed,confirmed,voided,closed_short',
+            'id' => 'nullable|integer|min:1', 'new' => 'nullable|in:1', 'po' => 'nullable|integer|min:1', 'page' => 'nullable|integer|min:1'];
+        $validator = \Validator::make(get(), $queryRules);
+        if ($validator->fails()) {
+            $this->controller->setStatusCode(400);
+            $this->page['queryErrors'] = $validator->errors()->toArray();
+            $this->page['queryValues'] = array_map(fn ($value) => is_scalar($value) ? (string) $value : '', array_intersect_key(get(), $queryRules));
+            $this->page['queryPath'] = \Request::url();
+            return;
+        }
+        $filters = $validator->validated();
         $class = $kind === 'receipts' ? GoodsReceipt::class : PurchaseOrder::class;
         $query = Op::scoped($class, $actor);
         if (!empty($filters['q'])) {

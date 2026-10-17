@@ -256,4 +256,34 @@ class MasterDataTest extends ApplicationTestCase
         $this->assertSame(0, ProductPackage::where('company_id', $one['company']->id)->count());
         $this->assertNull($one['company']->fresh()->currency_locked_at);
     }
+
+    public function testMalformedListQueriesRenderSafeCorrectionWithoutResults(): void
+    {
+        $company = $this->company();
+        $this->acting($company);
+        $original = \Request::instance()->query->all();
+        try {
+            foreach ([
+                ['/catalogue/products', ['q' => str_repeat('x', 101)]],
+                ['/purchasing', ['state' => 'invalid']],
+                ['/receiving', ['page' => ['bad']]],
+                ['/sales', ['page' => '-1']],
+                ['/delivery', ['so' => 'bad']],
+                ['/invoice-references', ['page' => '-1', 'q' => '<script>inert</script>']],
+                ['/inventory', ['movement_page' => '0']],
+            ] as [$path, $query]) {
+                \Request::instance()->query->replace($query);
+                $response = (new \Cms\Classes\Controller)->run($path);
+                $this->assertSame(400, $response->getStatusCode(), $path);
+                $html = $response->getContent();
+                $this->assertStringContainsString('id="query-error"', $html);
+                $this->assertStringContainsString('Reset filters', $html);
+                $this->assertStringNotContainsString('<script>inert</script>', $html);
+                $this->assertStringNotContainsString('SQLSTATE', $html);
+                $this->assertStringNotContainsString('<tbody>', $html);
+            }
+        } finally {
+            \Request::instance()->query->replace($original);
+        }
+    }
 }

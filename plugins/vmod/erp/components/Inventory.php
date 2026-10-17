@@ -25,7 +25,16 @@ class Inventory extends \Cms\Classes\ComponentBase
             return Redirect::to('/auth');
         }
         $actor = Workspace::authorize('inventory.read');
-        $filters = Op::validate(get(), ['q' => 'nullable|string|max:100', 'location_id' => 'nullable|integer|min:1', 'page' => 'nullable|integer|min:1', 'movement_page' => 'nullable|integer|min:1']);
+        $queryRules = ['q' => 'nullable|string|max:100', 'location_id' => 'nullable|integer|min:1', 'page' => 'nullable|integer|min:1', 'movement_page' => 'nullable|integer|min:1'];
+        $validator = \Validator::make(get(), $queryRules);
+        if ($validator->fails()) {
+            $this->controller->setStatusCode(400);
+            $this->page['queryErrors'] = $validator->errors()->toArray();
+            $this->page['queryValues'] = array_map(fn ($value) => is_scalar($value) ? (string) $value : '', array_intersect_key(get(), $queryRules));
+            $this->page['queryPath'] = \Request::url();
+            return;
+        }
+        $filters = $validator->validated();
         $query = Op::scoped(StockBalance::class, $actor)->with(['product', 'location']);
         $movements = Op::scoped(StockMovement::class, $actor)->with(['product', 'location']);
         foreach ([$query, $movements] as $q) {

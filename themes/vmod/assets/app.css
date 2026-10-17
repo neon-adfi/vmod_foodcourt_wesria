@@ -16,3 +16,9 @@ details[open] > summary { margin-bottom: .5rem; }
     .navbar-collapse { padding: 1rem 0; }
     .card-body { padding: 1.25rem; }
 }
+
+/* Follow October validation visibility, including targets styled with Tabler d-block. */
+[data-validate-for]:not(.jax-visible) { display: none !important; }
+[data-invoice-link] { flex-wrap: wrap; }
+
+#request-error { display: block; }

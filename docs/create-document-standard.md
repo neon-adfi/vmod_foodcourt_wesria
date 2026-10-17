@@ -23,3 +23,7 @@ New PO/SO revisions retain issuer snapshots; existing snapshots copy forward. Ca
 ## Presentation and acceptance
 
 Escape every user value; preserve text line breaks with CSS rather than raw HTML. Use a readable A4 print layout, repeated table headings, clear totals and wrapping long text. Hide navigation and print controls on paper; show no unsaved form values. Native print controls work by keyboard. Verify desktop/mobile previews, print/PDF output, long documents, statuses, exact revision access, missing snapshots and direct unauthorized requests in egolite. Do not claim successful OS printer delivery.
+
+## Repair acceptance: print sizing
+
+Commercial lines use a full-width item/package row followed by five aligned numeric columns. Keep each item with its quantities and amounts across page breaks. Numbers remain intact; descriptions wrap. Verify at the actual 186mm A4 content width (12mm page margins), including supported decimal boundaries and long names. Numeric cells retain readable gutters; screen-width measurements alone do not qualify print output. Inspect every generated PDF page.
