@@ -1,3 +1,6 @@
 description = "Protected document preview"
 ==
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="same-origin"><title>{{ document.number }} · {{ document.title }}</title><link href="{{ 'assets/tabler.min.css'|theme }}" rel="stylesheet"><link href="{{ 'assets/print.css'|theme }}?v=20261018-1" rel="stylesheet"></head><body>{% page %}</body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="same-origin"><title>{{ document.number }} · {{ document.title }}</title><link href="{{ 'assets/tabler.min.css'|theme }}" rel="stylesheet"><link href="{{ 'assets/print.css'|theme }}?v=20261018-1" rel="stylesheet"></head><body>{% page %}<script>
+window.addEventListener('pagehide', event => { if (event.persisted) { document.body.style.visibility = 'hidden'; document.title = 'Protected document'; } });
+window.addEventListener('pageshow', event => { if (event.persisted) location.reload(); });
+</script></body></html>

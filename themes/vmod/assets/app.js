@@ -1,11 +1,86 @@
 import { bootstrap } from './tabler.min.js';
 window.bootstrap = bootstrap;
 
+// Server validation is authoritative; no identity or form state is copied into browser storage.
+async function checkPageContext(context) {
+    try {
+        const response = await fetch('/account', {
+            method: 'POST', credentials: 'same-origin', cache: 'no-store',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest',
+                'X-AJAX-HANDLER': 'identity::onCheckContext', 'X-Workspace-Context': context },
+            body: new URLSearchParams({ _token: document.querySelector('input[name="_token"]')?.value ?? '' }),
+            signal: AbortSignal.timeout(10000)
+        });
+        if (!response.ok) return response.status;
+        return (await response.json()).valid === true ? 200 : 0;
+    } catch { return 0; }
+}
+
+const historyContext = document.body.dataset.historyContext;
+let historyFocus;
+window.addEventListener('pagehide', event => {
+    if (!event.persisted || !historyContext) return;
+    historyFocus = document.activeElement;
+    const content = document.querySelector('.page');
+    content.style.display = 'none'; content.inert = true;
+});
+async function restoreProtectedHistory() {
+    let recovery = document.querySelector('#history-recovery');
+    if (!recovery) {
+        recovery = document.createElement('div'); recovery.id = 'history-recovery';
+        recovery.className = 'container-xl my-4 alert alert-warning';
+        recovery.setAttribute('role', 'status'); recovery.tabIndex = -1;
+        document.body.append(recovery);
+    }
+    recovery.textContent = 'Checking your current account and workspace…';
+    const status = await checkPageContext(historyContext);
+    if (status === 200) {
+        recovery.remove();
+        const content = document.querySelector('.page');
+        content.style.display = ''; content.inert = false;
+        historyFocus?.focus({ preventScroll: true });
+    } else if ([401,403,409,419].includes(status)) {
+        location.reload();
+    } else {
+        recovery.textContent = 'Your account and workspace could not be verified. Protected content remains hidden.';
+        const retry = document.createElement('button'); retry.type = 'button';
+        retry.className = 'btn btn-primary ms-3'; retry.textContent = 'Try again';
+        retry.addEventListener('click', restoreProtectedHistory, { once: true });
+        const login = document.createElement('a'); login.href = '/auth'; login.target = '_blank';
+        login.rel = 'noopener'; login.className = 'btn btn-outline-secondary ms-2'; login.textContent = 'Sign in';
+        recovery.append(retry, login); recovery.focus();
+    }
+}
+window.addEventListener('pageshow', event => {
+    if (event.persisted && historyContext) restoreProtectedHistory();
+});
+
 document.addEventListener('ajax:setup', event => {
     const form = event.target.closest?.('form[data-workspace-context]');
     if (form) {
         const options = event.detail.context.options;
         options.headers = { ...options.headers, 'X-Workspace-Context': form.dataset.workspaceContext };
+        const handler = event.detail.context.handler;
+        if (handler !== 'workspaces::onSwitch' && !handler.startsWith('identity::')) {
+            const followSave = async href => {
+                const status = await checkPageContext(form.dataset.workspaceContext);
+                const target = new URL(href, location.href);
+                if (target.origin !== location.origin) return;
+                if (status === 200) { location.assign(target.href); return; }
+                const message = status === 409
+                    ? 'Save completed, but your workspace changed. Verify the original workspace and check the saved record before retrying.'
+                    : 'Save completed, but your current account and workspace could not be verified. Sign in if needed and check the saved record before retrying.';
+                showRequestError(message);
+                const error = document.querySelector('#request-error');
+                for (const [label, url] of [['Choose workspace', '/workspaces'], ['Check saved record', target.pathname + target.search]]) {
+                    const link = document.createElement('a'); link.textContent = label; link.href = url;
+                    link.target = '_blank'; link.rel = 'noopener'; link.className = 'd-inline-block me-3 mt-2';
+                    error.append(document.createTextNode(' '), link);
+                }
+            };
+            options.handleRedirectResponse = followSave;
+            options.handleReloadResponse = () => followSave(location.href);
+        }
         const product = form.querySelector('select[data-package-product]');
         if (product) {
             options.data = { ...options.data, expected_base_uom: product.selectedOptions[0]?.dataset.baseUom ?? '' };

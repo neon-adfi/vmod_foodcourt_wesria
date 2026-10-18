@@ -449,4 +449,23 @@ class WorkspaceAccessTest extends ApplicationTestCase
         \Request::instance()->headers->set('X-Workspace-Context', Workspace::token());
         $this->denied(fn () => Workspace::authorize('unknown.permission'), 403);
     }
+
+    public function testHistoryContextCheckIsReadOnlyAndRejectsChangedSessions(): void
+    {
+        $company = $this->company();
+        $this->acting($company);
+        $component = new \Vmod\Core\Components\Identity;
+        $this->assertTrue(method_exists($component, 'onCheckContext'), 'Native read-only context handler exists');
+        $context = Workspace::token();
+        $audits = Audit::count();
+        $membership = Membership::where('company_id', $company['company']->id)->firstOrFail()->toArray();
+        $this->assertSame(['valid' => true], $component->onCheckContext());
+        $this->assertSame($context, Workspace::token());
+        $this->assertSame($audits, Audit::count());
+        $this->assertSame($membership, Membership::where('company_id', $company['company']->id)->firstOrFail()->toArray());
+        \Request::instance()->headers->set('X-Workspace-Context', 'stale');
+        $this->denied(fn () => $component->onCheckContext(), 409);
+        $this->app['auth']->logout();
+        $this->denied(fn () => $component->onCheckContext(), 401);
+    }
 }

@@ -27,6 +27,7 @@ class Identity extends ComponentBase
     public function onRun()
     {
         $this->page['currentUser'] = Auth::getUser();
+        $this->page['workspaceToken'] = Auth::getUser() ? Workspace::token() : null;
         if ($this->property('view') === 'account' && !Auth::getUser()) {
             return Redirect::to('/auth');
         }
@@ -43,6 +44,12 @@ class Identity extends ComponentBase
                 $this->page['invitationError'] = 'This invitation is unavailable. Ask your company administrator for a new invitation.';
             }
         }
+    }
+
+    public function onCheckContext(): array
+    {
+        Workspace::assertContext();
+        return ['valid' => true];
     }
 
     public function onLogin()

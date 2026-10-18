@@ -14,6 +14,7 @@ if (!$app->environment('local') || !Schema::hasTable('vmod_erp_invoice_reference
     throw new RuntimeException('The already-migrated owned local runtime is required.');
 }
 $mode = $argv[1] ?? '';
+$hybrid = ($argv[2] ?? '') === '--hybrid';
 if ($mode !== '--create') {
     $fixture = json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR);
     $ids = [];
@@ -149,9 +150,9 @@ if ($mode !== '--create') {
 }
 $nonce = bin2hex(random_bytes(5));
 $password = bin2hex(random_bytes(20)) . '7!';
-$fixture = ['nonce' => $nonce, 'password' => $password, 'baseline' => '478f4a7575b8a85501761d6c01e7241a0b01d361',
+$fixture = ['nonce' => $nonce, 'password' => $password, 'baseline' => $hybrid ? '40a693aaac1e39b7170ae6827decd0a89dcfa9d2' : '478f4a7575b8a85501761d6c01e7241a0b01d361',
     'runtime' => ['php' => PHP_VERSION, 'mysql' => DB::selectOne('SELECT VERSION() AS v')->v, 'database' => DB::connection()->getDatabaseName(), 'host' => config('database.connections.mysql.host'), 'theme' => config('cms.active_theme')]];
-DB::transaction(function () use (&$fixture, $nonce, $password, $bootstrap) {
+DB::transaction(function () use (&$fixture, $nonce, $password, $bootstrap, $hybrid) {
     foreach (['a', 'b', 'c'] as $key) {
         $created = $bootstrap->create(['company_code' => 'unhappy-' . $key . '-' . $nonce, 'company_name' => 'Unhappy ' . strtoupper($key) . ' ' . $nonce,
             'branch_name' => 'Main', 'first_name' => 'Owner ' . strtoupper($key), 'email' => 'unhappy-' . $key . '-' . $nonce . '@example.invalid', 'password' => $password, 'password_confirmation' => $password]);
@@ -169,6 +170,9 @@ DB::transaction(function () use (&$fixture, $nonce, $password, $bootstrap) {
         'invoice' => ['invoice_reference.read', 'invoice_reference.write'],
         'recovery' => ['catalogue.read', 'catalogue.write'],
     ];
+    if ($hybrid) {
+        $sets['admin2'] = $all;
+    }
     foreach ($sets as $name => $permissions) {
         $role = \Vmod\Core\Models\Role::create(['company_id' => $fixture['a']['company_id'], 'name' => ucfirst($name), 'permissions' => $permissions]);
         $user = new \Vmod\Core\Models\User;
@@ -180,7 +184,16 @@ DB::transaction(function () use (&$fixture, $nonce, $password, $bootstrap) {
         $user->save();
         $member = \Vmod\Core\Models\Membership::create(['company_id' => $fixture['a']['company_id'], 'user_id' => $user->id, 'role_id' => $role->id]);
         $member->branches()->attach($fixture['a']['branch_id']);
+        if ($hybrid && $name === 'admin2') {
+            $member->branches()->attach($fixture['second_branch_id']);
+        }
         $fixture[$name] = ['email' => $user->email, 'user_id' => $user->id, 'company_id' => $fixture['a']['company_id'], 'branch_id' => $fixture['a']['branch_id'], 'member_id' => $member->id, 'role_id' => $role->id, 'permissions' => $permissions];
+    }
+    if ($hybrid) {
+        $cross = \Vmod\Core\Models\Membership::create(['company_id' => $fixture['a']['company_id'],
+            'user_id' => $fixture['b']['user_id'], 'role_id' => $fixture['clerk']['role_id']]);
+        $cross->branches()->attach($fixture['a']['branch_id']);
+        $fixture['cross_member_id'] = $cross->id;
     }
     $token = bin2hex(random_bytes(32));
     $expired = \Vmod\Core\Models\Invitation::create(['company_id' => $fixture['a']['company_id'], 'role_id' => $fixture['clerk']['role_id'], 'created_by_user_id' => $fixture['a']['user_id'],

@@ -11,7 +11,7 @@ description = "Vmod application"
     <link href="{{ 'assets/app.css'|theme }}?v=20261018-1" rel="stylesheet">
     {% styles %}
 </head>
-<body>
+<body{% if currentUser %} data-history-context="{{ workspaceToken }}"{% endif %}>
 <a href="#main" class="visually-hidden-focusable skip-link">Skip to content</a>
 <div class="page">
     <header class="navbar navbar-expand-md navbar-light">
@@ -52,7 +52,7 @@ description = "Vmod application"
     <footer class="footer footer-transparent"><div class="container-xl text-secondary small">Vmod · Workspaces & ERP</div></footer>
 </div>
 {% framework extras %}
-<script type="module" src="{{ 'assets/app.js'|theme }}?v=20261018-1"></script>
+<script type="module" src="{{ 'assets/app.js'|theme }}?v=20261018-2"></script>
 {% scripts %}
 </body>
 </html>
