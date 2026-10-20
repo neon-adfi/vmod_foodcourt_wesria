@@ -30,16 +30,21 @@ class Capture extends \Cms\Classes\ComponentBase
         $member = Workspace::authorize('circularity.read');
         $rules = ['uuid' => 'nullable|uuid', 'new' => 'nullable|in:1', 'id' => 'nullable|integer|min:1',
             'branch_ref' => 'nullable|string|max:128', 'area_id' => 'nullable|integer|min:1',
-            'measurement_date' => 'nullable|date_format:Y-m-d',
+            'measurement_date' => 'nullable|date_format:Y-m-d|prohibits:date_from,date_to',
+            'date_from' => 'nullable|required_with:date_to|date_format:Y-m-d',
+            'date_to' => 'nullable|required_with:date_from|date_format:Y-m-d',
             'measurement_type' => 'nullable|string|in:food_waste,packaging_waste,mixed_waste,reusable_issued,reusable_returned',
             'destination' => 'nullable|string|in:unknown,landfill,incineration,recycling,composting,anaerobic_digestion,animal_feed,other,not_applicable',
             'page' => 'nullable|integer|min:1|max:1000000'];
         $validator = \Validator::make(get(), $rules);
+        $validator->after(function ($validator) {
+            // Compare only validated dates; Laravel's cross-field date rule can throw on array input.
+            if ($validator->errors()->isEmpty() && get('date_from') && get('date_to') && get('date_to') < get('date_from')) {
+                $validator->errors()->add('date_to', 'The end date must be on or after the start date.');
+            }
+        });
         if ($validator->fails()) {
-            $this->controller->setStatusCode(400);
-            $this->page['queryErrors'] = $validator->errors()->toArray();
-            $this->page['queryValues'] = array_map(fn ($value) => is_scalar($value) ? (string) $value : '', array_intersect_key(get(), $rules));
-            $this->page['queryPath'] = \Request::url();
+            $this->queryError($validator->errors()->toArray(), $rules);
             return;
         }
         $filters = $validator->validated();
@@ -69,6 +74,27 @@ class Capture extends \Cms\Classes\ComponentBase
                 $this->page['area'] = $area;
                 return;
             }
+            if ($this->property('view') === 'overview') {
+                $summary = $client->request('GET', '/summary', array_diff_key($filters, array_flip(['uuid', 'id', 'new', 'page'])), $branch);
+                $scope = $summary['filters'];
+                if ($branch !== null && $branch !== '') {
+                    $scope['branch_ref'] = $branch;
+                }
+                $this->page['filters'] = $scope;
+                $this->page['summary'] = $summary;
+                $this->page['measurementUrl'] = '/circularity/entries?' . http_build_query($scope);
+                $links = [];
+                foreach ($summary['totals'] as $type => $total) {
+                    $typeScope = array_replace($scope, ['measurement_type' => $type]);
+                    $links[$type]['total'] = '/circularity/entries?' . http_build_query($typeScope);
+                    foreach ($total['destinations'] as $row) {
+                        $links[$type]['destinations'][$row['destination']] = '/circularity/entries?'
+                            . http_build_query(array_replace($typeScope, ['destination' => $row['destination']]));
+                    }
+                }
+                $this->page['summaryLinks'] = $links;
+                return;
+            }
             $entry = null;
             if (!empty($filters['uuid'])) {
                 try {
@@ -85,6 +111,11 @@ class Capture extends \Cms\Classes\ComponentBase
                 $this->page['selectedCourt'] = $entry['branch_ref'];
             }
             if (empty($filters['uuid'])) {
+                if (!empty($filters['measurement_date'])) {
+                    $filters['date_from'] = $filters['date_to'] = $filters['measurement_date'];
+                    unset($filters['measurement_date']);
+                    $this->page['filters'] = $filters;
+                }
                 $list = $client->request('GET', '/entries', array_diff_key($filters, array_flip(['uuid', 'id', 'new'])), $branch);
                 $this->page['records'] = $list;
                 foreach (['previous' => -1, 'next' => 1] as $name => $offset) {
@@ -93,6 +124,8 @@ class Capture extends \Cms\Classes\ComponentBase
                         ? '/circularity/entries?' . http_build_query(array_replace($filters, ['page' => $page])) : null;
                 }
             }
+        } catch (ValidationException $exception) {
+            $this->queryError($exception->errors(), $rules);
         } catch (HttpExceptionInterface $exception) {
             if ($exception->getStatusCode() !== 503 && $exception->getStatusCode() !== 429) {
                 throw $exception;
@@ -100,6 +133,15 @@ class Capture extends \Cms\Classes\ComponentBase
             $this->controller->setStatusCode($exception->getStatusCode());
             $this->page['circularityUnavailable'] = true;
         }
+    }
+
+    private function queryError(array $errors, array $rules): void
+    {
+        $this->controller->setStatusCode(400);
+        $this->page['queryErrors'] = $errors;
+        $values = array_replace(array_fill_keys(array_keys($errors), ''), get());
+        $this->page['queryValues'] = array_map(fn ($value) => is_scalar($value) ? (string) $value : '', array_intersect_key($values, $rules));
+        $this->page['queryPath'] = \Request::url();
     }
 
     public function onSaveArea()

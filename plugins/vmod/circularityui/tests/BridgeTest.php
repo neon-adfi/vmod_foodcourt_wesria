@@ -305,4 +305,105 @@ class BridgeTest extends ApplicationTestCase
             $this->assertSame(['notes' => ['Invalid &lt;img src=x onerror=alert(1)&gt;']], $exception->errors());
         }
     }
+
+    private function summaryPayload(): array
+    {
+        $totals = [];
+        foreach (['food_waste', 'packaging_waste', 'mixed_waste', 'reusable_issued', 'reusable_returned'] as $type) {
+            $totals[$type] = ['unit' => str_starts_with($type, 'reusable_') ? 'count' : 'kg',
+                'quantity' => null, 'entry_count' => 0, 'destinations' => []];
+        }
+        $totals['food_waste'] = ['unit' => 'kg', 'quantity' => '1999999999999.998', 'entry_count' => 2,
+            'destinations' => [['destination' => 'composting', 'quantity' => '1999999999999.998', 'entry_count' => 2]]];
+        return ['filters' => ['date_from' => '2026-01-01', 'date_to' => '2026-01-31'],
+            'reporting_timezone' => 'Asia/Kuala_Lumpur', 'totals' => $totals];
+    }
+
+    public function testSummaryRejectsMalformedResultsAndPreservesLargeExactStrings(): void
+    {
+        $this->acting($this->company());
+        $valid = $this->summaryPayload();
+        Http::fake(['*' => Http::response($valid)]);
+        $this->assertSame($valid, (new CircularityClient)->request('GET', '/summary'));
+        $invalid = [
+            ['totals.food_waste.quantity', 1.25], ['totals.food_waste.unit', 'count'],
+            ['totals.food_waste.entry_count', 0], ['totals.food_waste.destinations', []],
+            ['totals.food_waste.destinations.0.destination', 'not_applicable'],
+            ['totals.food_waste.destinations.0.quantity', '1e3'],
+            ['totals.reusable_issued.quantity', '0.000'], ['totals.reusable_issued', null],
+            ['filters.date_to', '2025-12-01'], ['filters.date_from', ['2026-01-01']],
+            ['reporting_timezone', 'invalid'], ['totals.food_waste.destinations.0.entry_count', '2'],
+        ];
+        foreach ($invalid as [$key, $value]) {
+            $payload = $valid;
+            \Illuminate\Support\Arr::set($payload, $key, $value);
+            Http::swap(new Factory);
+            Http::fake(['*' => Http::response($payload)]);
+            $this->denied(fn () => (new CircularityClient)->request('GET', '/summary'), 503);
+        }
+        Http::swap(new Factory);
+        Http::fake(['*' => Http::response(['ok' => true])]);
+        $this->denied(fn () => (new CircularityClient)->request('GET', '/summary'), 503);
+    }
+
+    public function testOverviewUsesEffectiveFiltersAndGetErrorsStayCorrectable(): void
+    {
+        $this->acting($this->company());
+        $options = ['types' => ['food_waste' => ['label' => 'Food waste', 'unit' => 'kg']],
+            'destinations' => ['composting' => 'Composting'], 'modes' => ['daily_total' => 'Daily total'],
+            'today' => '2026-01-31', 'reporting_timezone' => 'Asia/Kuala_Lumpur'];
+        Http::fake(['*/options' => Http::response($options), '*/areas' => Http::response(['areas' => []]),
+            '*/summary' => Http::response($this->summaryPayload()), '*' => Http::response(['ok' => true])]);
+        \Request::instance()->setMethod('GET');
+        \Request::instance()->query->replace([]);
+        $page = new \ArrayObject(['controller' => new \Cms\Classes\Controller], \ArrayObject::ARRAY_AS_PROPS);
+        (new \Vmod\CircularityUi\Components\Capture($page, ['view' => 'overview']))->onRun();
+        $this->assertArrayHasKey('date_from', $page['filters']);
+        $this->assertSame('2026-01-01', $page['filters']['date_from']);
+        $this->assertSame('1999999999999.998', $page['summary']['totals']['food_waste']['quantity']);
+        $this->assertStringContainsString('date_from=2026-01-01', $page['measurementUrl']);
+        $this->assertStringContainsString('measurement_type=food_waste', $page['summaryLinks']['food_waste']['total']);
+
+        foreach ([['date_from' => '2026-01-01'], ['date_from' => ['bad'], 'date_to' => '2026-01-31']] as $query) {
+            \Request::instance()->query->replace($query);
+            $page = new \ArrayObject(['controller' => new \Cms\Classes\Controller], \ArrayObject::ARRAY_AS_PROPS);
+            (new \Vmod\CircularityUi\Components\Capture($page, ['view' => 'overview']))->onRun();
+            $this->assertNotEmpty($page['queryErrors']);
+            $this->assertArrayHasKey('date_from', $page['queryValues']);
+            $this->assertArrayHasKey('date_to', $page['queryValues']);
+            $this->assertFalse(isset($page['summary']));
+        }
+        \Request::instance()->query->replace(['date_from' => '2026-01-01', 'date_to' => '2026-01-31']);
+        Http::swap(new Factory);
+        Http::fake(['*/options' => Http::response($options), '*/areas' => Http::response(['areas' => []]),
+            '*/summary*' => Http::response(['errors' => ['date_to' => ['Choose an end date.']]], 422)]);
+        $page = new \ArrayObject(['controller' => new \Cms\Classes\Controller], \ArrayObject::ARRAY_AS_PROPS);
+        (new \Vmod\CircularityUi\Components\Capture($page, ['view' => 'overview']))->onRun();
+        $this->assertSame('2026-01-31', $page['queryValues']['date_to']);
+        $this->assertSame(['Choose an end date.'], $page['queryErrors']['date_to']);
+    }
+
+    public function testUnavailableOverviewRendersTheNativeWarningWithoutTotals(): void
+    {
+        $this->acting($this->company());
+        \Request::instance()->setMethod('GET');
+        \Request::instance()->query->replace([]);
+        Http::fake([
+            '*/options' => Http::response(['types' => ['food_waste' => ['label' => 'Food waste', 'unit' => 'kg']],
+                'modes' => ['daily_total' => 'Daily total'], 'destinations' => ['unknown' => 'Unknown'],
+                'reporting_timezone' => 'Asia/Kuala_Lumpur', 'today' => '2026-01-31']),
+            '*/areas' => Http::response(['areas' => []]),
+            '*' => Http::response(['message' => 'private upstream failure'], 503),
+        ]);
+        $response = (new \Cms\Classes\Controller)->run('/circularity');
+        $this->assertSame(503, $response->getStatusCode());
+        $this->assertStringContainsString('Circularity is temporarily unavailable.', $response->getContent());
+        $this->assertStringNotContainsString('data-summary-quantity', $response->getContent());
+        $this->assertStringNotContainsString('private upstream failure', $response->getContent());
+        Http::assertSent(fn ($request) => str_ends_with($request->url(), '/summary'));
+        // Optional private browser fixture: actual native rendering with a simulated upstream outage.
+        if (getenv('VMOD_CIRCULARITY_ERROR_HTML')) {
+            file_put_contents(getenv('VMOD_CIRCULARITY_ERROR_HTML'), $response->getContent());
+        }
+    }
 }

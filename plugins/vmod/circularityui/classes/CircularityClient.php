@@ -144,6 +144,8 @@ class CircularityClient
                     $valid = $valid && is_string($key) && is_string($label);
                 }
             }
+        } elseif ($path === '/summary') {
+            $valid = $this->validSummary($result);
         } elseif ($path === '/areas' || preg_match('#\A/areas/[1-9][0-9]*\z#', $path)) {
             $list = $method === 'GET' && $path === '/areas';
             $rows = $list ? ($result['areas'] ?? null) : (isset($result['area']) ? [$result['area']] : null);
@@ -176,6 +178,60 @@ class CircularityClient
             }
         }
         abort_unless($valid, 503, 'Circularity service is unavailable.');
+    }
+
+    private function validSummary(array $result): bool
+    {
+        if (Validator::make($result, [
+            'reporting_timezone' => 'required|timezone', 'filters' => 'required|array',
+            'filters.date_from' => 'required|date_format:Y-m-d', 'filters.date_to' => 'required|date_format:Y-m-d',
+            'filters.branch_ref' => 'sometimes|string|max:128', 'filters.area_id' => 'sometimes|integer|min:1',
+            'filters.measurement_type' => 'sometimes|in:food_waste,packaging_waste,mixed_waste,reusable_issued,reusable_returned',
+            'filters.destination' => 'sometimes|in:unknown,landfill,incineration,recycling,composting,anaerobic_digestion,animal_feed,other,not_applicable',
+            'totals' => 'required|array|size:5',
+        ])->fails() || $result['filters']['date_to'] < $result['filters']['date_from']
+            || array_diff(array_keys($result['filters']), ['date_from', 'date_to', 'branch_ref', 'area_id', 'measurement_type', 'destination'])) {
+            return false;
+        }
+        foreach (['food_waste', 'packaging_waste', 'mixed_waste', 'reusable_issued', 'reusable_returned'] as $type) {
+            $total = $result['totals'][$type] ?? null;
+            $count = str_starts_with($type, 'reusable_');
+            if (!is_array($total) || ($total['unit'] ?? null) !== ($count ? 'count' : 'kg')
+                || !is_int($total['entry_count'] ?? null) || $total['entry_count'] < 0
+                || !array_key_exists('quantity', $total) || !is_array($total['destinations'] ?? null)
+                || !array_is_list($total['destinations'])) {
+                return false;
+            }
+            if ($total['entry_count'] === 0) {
+                if ($total['quantity'] !== null || $total['destinations'] !== []) {
+                    return false;
+                }
+                continue;
+            }
+            // Aggregate values can exceed the DECIMAL(15,3) limit of one measurement.
+            $pattern = $count ? '/\A[0-9]{1,65}\z/' : '/\A[0-9]{1,65}\.[0-9]{3}\z/';
+            if (!is_string($total['quantity']) || !preg_match($pattern, $total['quantity']) || !$total['destinations']) {
+                return false;
+            }
+            $seen = [];
+            $entries = 0;
+            foreach ($total['destinations'] as $row) {
+                $destination = is_array($row) ? ($row['destination'] ?? null) : null;
+                if (!is_string($destination) || isset($seen[$destination])
+                    || !in_array($destination, $count ? ['not_applicable'] : [
+                        'unknown', 'landfill', 'incineration', 'recycling', 'composting', 'anaerobic_digestion', 'animal_feed', 'other',
+                    ], true) || !is_string($row['quantity'] ?? null) || !preg_match($pattern, $row['quantity'])
+                    || !is_int($row['entry_count'] ?? null) || $row['entry_count'] < 1) {
+                    return false;
+                }
+                $seen[$destination] = true;
+                $entries += $row['entry_count'];
+            }
+            if ($entries !== $total['entry_count']) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private function validEntry($row): bool

@@ -78,6 +78,121 @@ class CaptureTest extends ApplicationTestCase
         $this->api('PATCH', '/areas/' . $area['id'], ['version' => 3, 'branch_ref' => 'Court-B'], 422);
     }
 
+    public function testSummaryReconcilesExactCurrentMeasurementsAndKeepsMissingZeroAndCountsDistinct(): void
+    {
+        $area = $this->area();
+        $create = fn ($changes) => $this->api('POST', '/entries', $this->measurement($area, $changes), 201)['entry'];
+        $food = $create(['quantity' => '10.125']);
+        $create(['quantity' => '2.000', 'destination' => 'unknown']);
+        $create(['measurement_type' => 'mixed_waste', 'quantity' => '3.250', 'destination' => 'unknown']);
+        foreach (['reusable_issued' => '8', 'reusable_returned' => '12'] as $type => $quantity) {
+            $create(['measurement_type' => $type, 'quantity' => $quantity, 'destination' => 'not_applicable']);
+        }
+        $range = ['date_from' => '2026-01-01', 'date_to' => '2026-01-01', 'area_id' => $area['id']];
+        $totals = $this->api('GET', '/summary', $range)['totals'];
+        $this->assertSame('12.125', $totals['food_waste']['quantity']);
+        $this->assertSame(2, $totals['food_waste']['entry_count']);
+        $destinations = array_column($totals['food_waste']['destinations'], 'quantity', 'destination');
+        $this->assertSame('10.125', $destinations['composting']);
+        $this->assertSame('2.000', $destinations['unknown']);
+        $this->assertSame('3.250', $totals['mixed_waste']['quantity']);
+        $this->assertNull($totals['packaging_waste']['quantity']);
+        $this->assertSame('8', $totals['reusable_issued']['quantity']);
+        $this->assertSame('12', $totals['reusable_returned']['quantity']);
+        $create(['measurement_type' => 'packaging_waste', 'quantity' => '0', 'destination' => 'recycling']);
+        $this->assertSame('0.000', $this->api('GET', '/summary', $range)['totals']['packaging_waste']['quantity']);
+        $filtered = $this->api('GET', '/summary', $range + ['destination' => 'composting'])['totals'];
+        $this->assertSame('10.125', $filtered['food_waste']['quantity']);
+        $this->assertNull($filtered['reusable_returned']['quantity']);
+        $this->assertSame(0, $filtered['reusable_returned']['entry_count']);
+
+        $this->api('PATCH', '/areas/' . $area['id'], ['version' => 1, 'is_active' => false]);
+        $this->api('PATCH', '/entries/' . $food['uuid'], ['version' => 1, 'quantity' => '1.125']);
+        $this->assertSame('3.125', $this->api('GET', '/summary', $range)['totals']['food_waste']['quantity']);
+        $this->api('DELETE', '/entries/' . $food['uuid'], ['version' => 2]);
+        $this->assertSame('2.000', $this->api('GET', '/summary', $range)['totals']['food_waste']['quantity']);
+    }
+
+    public function testRangesAreInclusiveAndListsKeepHistoryAndExactDateCompatibility(): void
+    {
+        $area = $this->area();
+        foreach (['2025-12-31', '2026-01-01', '2026-01-31', '2026-02-01'] as $date) {
+            $this->api('POST', '/entries', $this->measurement($area, ['measurement_date' => $date]), 201);
+        }
+        $range = ['date_from' => '2026-01-01', 'date_to' => '2026-01-31'];
+        $this->assertSame(4, $this->api('GET', '/entries')['total']);
+        $this->assertSame(2, $this->api('GET', '/entries', $range)['total']);
+        $this->assertSame('2.500', $this->api('GET', '/summary', $range)['totals']['food_waste']['quantity']);
+        $this->assertSame(1, $this->api('GET', '/entries', ['measurement_date' => '2025-12-31'])['total']);
+        foreach ([
+            ['date_from' => '2026-01-01'], ['date_to' => '2026-01-31'],
+            ['date_from' => '2026-02-30', 'date_to' => '2026-03-01'],
+            ['date_from' => '2026-02-01', 'date_to' => '2026-01-01'],
+            ['date_from' => ['2026-01-01'], 'date_to' => '2026-01-01'],
+            $range + ['measurement_date' => '2026-01-01'],
+        ] as $invalid) {
+            $this->api('GET', '/entries', $invalid, 422);
+            $this->api('GET', '/summary', $invalid, 422);
+        }
+        \Carbon\Carbon::setTestNow('2026-02-28 16:30:00 UTC');
+        try {
+            $summary = $this->api('GET', '/summary');
+            $this->assertSame('Asia/Kuala_Lumpur', $summary['reporting_timezone']);
+            $this->assertSame('2026-03-01', $summary['filters']['date_from']);
+            $this->assertSame('2026-03-01', $summary['filters']['date_to']);
+            $this->assertNull($summary['totals']['food_waste']['quantity']);
+        } finally {
+            \Carbon\Carbon::setTestNow();
+        }
+    }
+
+    public function testSummaryIsNotPaginatedAndAggregatesCanExceedAnEntryMaximum(): void
+    {
+        $area = $this->area();
+        for ($index = 0; $index < 26; $index++) {
+            $this->api('POST', '/entries', $this->measurement($area, ['mode' => 'individual', 'quantity' => '0.001']), 201);
+        }
+        $range = ['date_from' => '2026-01-01', 'date_to' => '2026-01-01'];
+        $this->assertCount(25, $this->api('GET', '/entries', $range)['data']);
+        $this->assertCount(1, $this->api('GET', '/entries', $range + ['page' => 2])['data']);
+        $this->assertSame('0.026', $this->api('GET', '/summary', $range)['totals']['food_waste']['quantity']);
+        foreach (['mixed_waste', 'reusable_issued'] as $type) {
+            for ($index = 0; $index < 2; $index++) {
+                $this->api('POST', '/entries', $this->measurement($area, [
+                    'mode' => 'individual', 'measurement_type' => $type,
+                    'quantity' => $type === 'mixed_waste' ? '999999999999.999' : '999999999999',
+                    'destination' => $type === 'mixed_waste' ? 'unknown' : 'not_applicable',
+                ]), 201);
+            }
+        }
+        $totals = $this->api('GET', '/summary', $range)['totals'];
+        $this->assertSame('1999999999999.998', $totals['mixed_waste']['quantity']);
+        $this->assertSame('1999999999998', $totals['reusable_issued']['quantity']);
+    }
+
+    public function testSummaryAndRangesRetainScopeDenialsAndEmptyIntersections(): void
+    {
+        $area = $this->area();
+        $other = $this->area('Stall B', 'Court-B');
+        $this->api('POST', '/entries', $this->measurement($other), 201);
+        $range = ['date_from' => '2026-01-01', 'date_to' => '2026-01-31'];
+        $this->assertNull($this->api('GET', '/summary', $range + [
+            'branch_ref' => 'Court-A', 'area_id' => $other['id'],
+        ])['totals']['food_waste']['quantity']);
+        foreach (['/summary', '/entries'] as $path) {
+            $this->api('GET', $path, $range + ['branch_ref' => 'foreign'], 404);
+            $this->api('GET', $path, $range + ['area_id' => $other['id'] + 99999], 404);
+        }
+        $this->context['branch_refs'] = ['Court-A'];
+        $this->assertNull($this->api('GET', '/summary', $range)['totals']['food_waste']['quantity']);
+        $this->api('GET', '/summary', $range + ['area_id' => $other['id']], 404);
+        $this->context['tenant_ref'] = 'other-tenant';
+        $this->api('GET', '/summary', $range + ['area_id' => $area['id']], 404);
+        $this->assertNull($this->api('GET', '/summary', $range)['totals']['food_waste']['quantity']);
+        $this->context['branch_refs'] = [];
+        $this->api('GET', '/summary', $range, 403);
+    }
+
     public function testValidationPreservesZeroAndRejectsFutureDatesFloatExponentOverflowAndFractionalCounts(): void
     {
         $options = $this->api('GET', '/options');

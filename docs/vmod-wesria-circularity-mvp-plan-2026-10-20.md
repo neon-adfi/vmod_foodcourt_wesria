@@ -4,7 +4,7 @@
 
 **Date:** 2026-10-20, Asia/Kuala_Lumpur.
 
-**Status:** Phases 1 and 2 complete locally. Phase 2 started from clean `main` at `a42add5`. See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md). Phase 3 and later remain not started.
+**Status:** Phases 1–3 complete locally. See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md) and [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md). Phase 3 started from clean `main` at `2fe3953`; Git commit, merge and push were separately authorized after acceptance. Phase 4 and later remain not started.
 
 **Inspected baseline:** `cfe3812`, `/Users/stev/htdoc/vmod_wesria`.
 
@@ -104,8 +104,8 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 | Phase | Independently testable deliverable | Status |
 | --- | --- | --- |
 | 1 | Environment, API boundary and frontend access foundation | Complete locally |
-| 2 | End-to-end measurement capture and correction | Local acceptance in progress |
-| 3 | Live totals and completed frontend views | Not started |
+| 2 | End-to-end measurement capture and correction | Complete locally |
+| 3 | Live totals and completed frontend views | Complete locally |
 | 4 | Integrated MVP qualification | Not started |
 | 5 | Independent-hosting rehearsal | Not started |
 
@@ -153,11 +153,13 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 
 **Produces:** Filtered current totals and completed native overview/list screens.
 
-- [ ] Add date-range, permitted-court and area filtering, with the current reporting month as default. Paginate record lists using existing native conventions.
-- [ ] Calculate totals only in the provider. Show three separate waste totals, destination breakdowns and separate reusable issued/returned counts.
-- [ ] Distinguish missing data, explicit zero, unknown destination and API failure. Changes/removals must affect the next read without a rebuild or background job.
-- [ ] Add a known example: food waste daily totals 10.125 kg composting + 2.000 kg unknown yield 12.125 kg; mixed waste remains separate; 8 issued and 12 returned are displayed as independent valid counts.
-- [ ] Verify filter boundaries, edited/removed quantities, exact decimal sums and no-access/empty states. Check keyboard operation, responsive tables and stale workspace/history recovery in egolite.
+**Confirmed Phase 3 decisions (2026-10-21):** Only the overview defaults to the reporting month's first day through today. The measurement list retains its all-history default; overview links carry their selected range. Destination filters apply uniformly to all metrics, so a waste destination leaves reusable metrics with no matching data. Existing exact-date capture lookups and legacy list links remain supported. No schema, permission or writer changes are required.
+
+- [x] Add date-range, permitted-court and area filtering, with the current reporting month as default. Paginate record lists using existing native conventions.
+- [x] Calculate totals only in the provider. Show three separate waste totals, destination breakdowns and separate reusable issued/returned counts.
+- [x] Distinguish missing data, explicit zero, unknown destination and API failure. Changes/removals must affect the next read without a rebuild or background job.
+- [x] Add a known example: food waste daily totals 10.125 kg composting + 2.000 kg unknown yield 12.125 kg; mixed waste remains separate; 8 issued and 12 returned are displayed as independent valid counts.
+- [x] Verify filter boundaries, edited/removed quantities, exact decimal sums and no-access/empty states. Check keyboard operation, responsive tables and stale workspace/history recovery in egolite.
 
 **Gate:** Displayed totals reconcile exactly to the filtered active entries. No composite score, net stock balance or verified-recovery claim appears.
 
@@ -205,10 +207,10 @@ wesria_compose=(docker compose -p foodywesria -f /Users/stev/htdoc/docker_foody_
 "${wesria_compose[@]}" --profile test run --rm -T php-test php vendor/bin/phpunit -c plugins/vmod/circularity/phpunit.xml --do-not-cache-result
 "${wesria_compose[@]}" --profile test run --rm -T php-test php vendor/bin/phpunit -c plugins/vmod/circularityui/phpunit.xml --do-not-cache-result
 "${wesria_compose[@]}" --profile test run --rm -T php-test composer test
-ego-browser nodejs < tests/e2e/circularity.mjs
+ego-browser nodejs < tests/e2e/circularity-phase3.mjs
 ```
 
-The new configurations/runner above are phase deliverables, not files that already exist. Add `tests/vmod/check-circularity-concurrency.php` following the current guarded, synchronized MySQL checks; record its exact invocation and privately supplied observer credential procedure in phase evidence. Never broaden database guards or use development data for destructive/concurrency tests.
+The plugin configurations, HTTP proof and concurrency harness now exist from Phases 1–2. Browser checks use the phase-specific runner, including `tests/e2e/circularity-phase3.mjs` for Phase 3. Phase 4 extends integrated qualification; Phase 3 does not add concurrency scenarios. Never broaden database guards or use development data for destructive/concurrency tests.
 
 Review these failure classes explicitly:
 
@@ -225,5 +227,7 @@ The target graph was unavailable during planning; direct implementation/caller/t
 Keep one progress table above and append a compact evidence entry after each executed phase: date, checkout/commit, runtime/schema identity, changed-file manifest, checks/results, browser evidence and remaining gate. A failed, skipped or unavailable required check is not a pass.
 
 **2026-10-20 — Planning/grilling only:** Product questions resolved for dual input modes, mode-switch boundaries, mixed waste and removal. Technical review resolved plugin ownership, HTTP worker isolation, permission rollout, authorization timing and lean write protection. This file is the only planning deliverable; no application code, schema, runtime, tests or deployment was changed or executed by writing it.
+
+**2026-10-21 — Phase 3 accepted locally:** Exact live summaries, native overview and range-filtered lists complete. Focused tests: 29/789 assertions; aggregate Vmod: 100/1,767 assertions; framework: 425 tests with four existing skips. Real HTTP and eight browser scenario groups pass; twelve screenshots inspected. [Evidence, manifest, commands and simulation limits](evidence/circularity-phase-3-2026-10-21.md). No schema or writer changes. Phase 4, commit, push and deployment remain outside this execution.
 
 Later score methodology, performance rates, evidence uploads, partner self-service and external integrations need separate specifications. Do not implement weights, denominators, accounting effects or environmental claims from assumptions.

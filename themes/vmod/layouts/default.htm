@@ -29,7 +29,7 @@ description = "Vmod application"
                 {% if access['invoice_reference.read'] %}<a class="nav-link" href="/invoice-references">Invoice references</a>{% endif %}
                 {% if access['inventory.read'] %}<a class="nav-link" href="/inventory">Inventory</a>{% endif %}
                 {% if access['catalogue.read'] %}<a class="nav-link" href="/catalogue/products">Catalogue</a>{% endif %}
-                {% if access['circularity.read'] %}<a class="nav-link" href="/circularity/entries">Circularity</a>{% endif %}
+                {% if access['circularity.read'] %}<a class="nav-link" href="/circularity">Circularity</a>{% endif %}
                     <a class="nav-link" href="/workspaces">Switch workspace</a>
                     {% if access['workspace.manage'] %}<a class="nav-link" href="/settings/company">Company & branches</a>{% endif %}
                     {% if access['users.manage'] %}<a class="nav-link" href="/settings/members">Members</a>{% endif %}
@@ -53,7 +53,7 @@ description = "Vmod application"
     <footer class="footer footer-transparent"><div class="container-xl text-secondary small">Vmod · Workspaces & ERP</div></footer>
 </div>
 {% framework extras %}
-<script type="module" src="{{ 'assets/app.js'|theme }}?v=20261020-3"></script>
+<script type="module" src="{{ 'assets/app.js'|theme }}?v=20261021-1"></script>
 {% scripts %}
 </body>
 </html>

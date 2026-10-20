@@ -167,12 +167,34 @@ try {
     checkCircularity($updated->status() === 200 && $updated->json('entry.version') === 2, 'HTTP edit failed.');
     checkCircularity($http->patch($api . '/entries/' . $uuid, ['version' => 1, 'quantity' => '3'])->status() === 409, 'HTTP stale edit was accepted.');
     checkCircularity($http->get($api . '/entries', ['area_id' => $area['id']])->json('total') === 1, 'HTTP scoped list failed.');
+    $range = ['date_from' => '2026-01-01', 'date_to' => '2026-01-01', 'area_id' => $area['id']];
+    foreach ([
+        ['food_waste', '10.125', 'composting'], ['food_waste', '2.000', 'unknown'],
+        ['reusable_issued', '8', 'not_applicable'], ['reusable_returned', '12', 'not_applicable'],
+    ] as [$type, $quantity, $destination]) {
+        checkCircularity($http->post($api . '/entries', array_replace($payload, [
+            'uuid' => (string) \Illuminate\Support\Str::uuid(), 'measurement_type' => $type,
+            'quantity' => $quantity, 'destination' => $destination,
+        ]))->status() === 201, 'HTTP summary fixture creation failed.');
+    }
+    $summary = $http->get($api . '/summary', $range);
+    checkCircularity($summary->status() === 200 && $summary->json('totals.food_waste.quantity') === '12.125'
+        && $summary->json('totals.mixed_waste.quantity') === '2.125'
+        && $summary->json('totals.packaging_waste.quantity') === null
+        && $summary->json('totals.reusable_issued.quantity') === '8'
+        && $summary->json('totals.reusable_returned.quantity') === '12', 'HTTP summary reconciliation failed.');
+    checkCircularity($http->get($api . '/summary', $range + ['destination' => 'composting'])
+        ->json('totals.reusable_returned.quantity') === null, 'HTTP destination filter did not apply uniformly.');
+    checkCircularity($http->get($api . '/summary', ['date_from' => '2026-01-01'])->status() === 422, 'HTTP incomplete range accepted.');
     checkCircularity($http->delete($api . '/entries/' . $uuid, ['version' => 2])->json('entry.status') === 'removed', 'HTTP removal failed.');
     checkCircularity($http->get($api . '/entries/' . $uuid)->json('entry.status') === 'removed', 'HTTP removed lookup failed.');
+    checkCircularity($http->get($api . '/summary', $range)->json('totals.mixed_waste.quantity') === null, 'HTTP removed entry still contributes.');
     checkCircularity($http->post($api . '/entries', $payload)->status() === 409, 'HTTP removed UUID resurrected.');
     checkCircularity($http->patch($api . '/areas/' . $area['id'], ['version' => 1, 'is_active' => false])->status() === 200, 'HTTP area update failed.');
     $http->replaceHeaders(['X-Circularity-Context' => json_encode(array_replace($context, ['tenant_ref' => 'other-tenant']))]);
     checkCircularity($http->get($api . '/entries/' . $uuid)->status() === 404, 'HTTP removed record leaked across tenants.');
+    checkCircularity($http->get($api . '/summary', $range)->status() === 404, 'HTTP summary area leaked across tenants.');
+    echo "PASS: provider-only summary, exact totals, uniform destination filters, range validation and next-read removal.\n";
     echo "PASS: provider-only HTTP options, area CRUD, measurement CRUD, exact zero, replay, stale writes and removed-record isolation.\n";
 } finally {
     proc_terminate($process, 3); // Native SIGQUIT: drain the test workers.

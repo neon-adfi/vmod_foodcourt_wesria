@@ -1,0 +1,47 @@
+title = "Circularity overview"
+url = "/circularity"
+layout = "default"
+[identity]
+view = "layout"
+[circularityCapture]
+view = "overview"
+==
+<div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }}</div><h1>Circularity overview</h1><p class="text-secondary">Current saved measurements for your food courts.</p></div>
+<nav class="d-flex gap-3 mb-4" aria-label="Circularity"><a href="/circularity" aria-current="page">Overview</a><a href="/circularity/entries">Measurements</a><a href="/circularity/areas">Areas</a></nav>
+{% if circularityUnavailable %}
+<div class="alert alert-warning" role="alert">Circularity is temporarily unavailable. <a href="">Try again</a>.</div>
+{% else %}
+<form method="get" class="card card-body mb-4" id="circularity-filters">
+<div class="row g-3">
+<div class="col-md-4"><label for="filter-court" class="form-label">Food court</label><select id="filter-court" name="branch_ref" class="form-select"><option value="">All permitted courts</option>{% for branch in branches %}<option value="{{ branch.id }}" {{ selectedCourt == branch.id ? 'selected' }}>{{ branch.name }}</option>{% endfor %}</select></div>
+<div class="col-md-4"><label for="filter-area" class="form-label">Area</label><select id="filter-area" name="area_id" class="form-select"><option value="">All areas</option>{% for area in areas %}<option value="{{ area.id }}" data-court="{{ area.branch_ref }}" {{ filters.area_id == area.id ? 'selected' }}>{{ area.name }}{{ not area.is_active ? ' (inactive)' }}</option>{% endfor %}</select></div>
+<div class="col-md-4"><label for="filter-destination" class="form-label">Destination</label><select id="filter-destination" name="destination" class="form-select"><option value="">All destinations</option>{% for value, label in options.destinations %}<option value="{{ value }}" {{ filters.destination == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select></div>
+<div class="col-md-4"><label for="filter-from" class="form-label">From</label><input id="filter-from" type="date" name="date_from" value="{{ filters.date_from }}" class="form-control" required></div>
+<div class="col-md-4"><label for="filter-to" class="form-label">Through</label><input id="filter-to" type="date" name="date_to" value="{{ filters.date_to }}" class="form-control" required></div>
+<div class="col-md-4 d-flex align-items-end gap-2"><button class="btn btn-primary" type="submit">Apply filters</button><a class="btn btn-outline-secondary" href="/circularity">Reset</a></div>
+</div>
+<p class="form-hint mt-3 mb-0">Dates include both endpoints · {{ summary.reporting_timezone }}. Destination applies to every total; reusable items use Not applicable.</p>
+</form>
+<div class="d-flex flex-wrap gap-2 mb-4"><a class="btn btn-outline-primary" id="view-measurements" href="{{ measurementUrl }}">View measurements</a>{% if access['circularity.write'] %}<a class="btn btn-primary" href="/circularity/entries?new=1">New measurement</a>{% endif %}</div>
+<div class="row row-cards mb-4">
+{% for type, total in summary.totals %}
+<div class="{{ total.unit == 'kg' ? 'col-md-4' : 'col-md-6' }}">
+<section class="card h-100" data-summary-type="{{ type }}" aria-labelledby="summary-{{ type }}"><div class="card-body">
+<h2 class="h3" id="summary-{{ type }}">{{ options.types[type].label }}</h2>
+{% if total.quantity is not null %}<p class="h1 text-break mb-3" data-summary-quantity>{{ total.quantity }} <span class="h3 fw-normal">{{ total.unit == 'kg' ? 'kg' : 'items' }}</span></p><a href="{{ summaryLinks[type].total }}">View records<span class="visually-hidden"> for {{ options.types[type].label }}</span></a>
+{% else %}<p class="text-secondary mb-0" data-summary-empty>No data for selected filters.</p>{% endif %}
+</div></section></div>
+{% endfor %}
+</div>
+<h2>Recorded waste destinations</h2>
+<p class="text-secondary">Destinations describe what staff recorded. They do not verify treatment or recovery. Shared areas are measurement locations; record each physical quantity once.</p>
+<div class="row row-cards">
+{% for type, total in summary.totals %}{% if total.unit == 'kg' %}
+<div class="col-lg-4"><section class="card h-100"><div class="card-header"><h3 class="card-title">{{ options.types[type].label }}</h3></div>
+<div class="table-responsive"><table class="table mb-0" data-destination-type="{{ type }}"><caption class="visually-hidden">{{ options.types[type].label }} by recorded destination</caption><thead><tr><th scope="col">Destination</th><th scope="col" class="text-end">kg</th></tr></thead><tbody>
+{% for row in total.destinations %}<tr><td><a href="{{ summaryLinks[type].destinations[row.destination] }}">{{ options.destinations[row.destination] }}</a></td><td class="text-end">{{ row.quantity }}</td></tr>
+{% else %}<tr><td colspan="2" class="text-secondary">No data for selected filters.</td></tr>{% endfor %}
+</tbody></table></div></section></div>
+{% endif %}{% endfor %}
+</div>
+{% endif %}

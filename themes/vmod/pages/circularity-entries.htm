@@ -7,7 +7,7 @@ view = "layout"
 view = "entries"
 ==
 <div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }}</div><h1>Circularity measurements</h1><p class="text-secondary">Record daily totals or individual measurements for each area. Mixed waste stays separate.</p></div>
-<nav class="d-flex gap-3 mb-4" aria-label="Circularity"><a href="/circularity/entries" aria-current="page">Measurements</a><a href="/circularity/areas">Areas</a></nav>
+<nav class="d-flex gap-3 mb-4" aria-label="Circularity"><a href="/circularity">Overview</a><a href="/circularity/entries" aria-current="page">Measurements</a><a href="/circularity/areas">Areas</a></nav>
 {% if circularityUnavailable %}<div class="alert alert-warning" role="alert">Circularity is temporarily unavailable. <a href="">Try again</a>.</div>{% else %}
 {% if entryUuid %}<a class="btn btn-outline-secondary mb-3" href="/circularity/entries">All measurements</a>
 {% if entry.status == 'removed' %}<div class="alert alert-info" role="status">This measurement was removed.</div>{% if access['circularity.write'] %}<a class="btn btn-primary" href="/circularity/entries?new=1">New measurement</a>{% endif %}
@@ -40,10 +40,11 @@ view = "entries"
 <form method="get" class="row g-2 mb-3" id="circularity-filters">
 <div class="col-md-3"><label for="filter-court" class="form-label">Food court</label><select id="filter-court" name="branch_ref" class="form-select"><option value="">All permitted courts</option>{% for branch in branches %}<option value="{{ branch.id }}" {{ selectedCourt == branch.id ? 'selected' }}>{{ branch.name }}</option>{% endfor %}</select></div>
 <div class="col-md-3"><label for="filter-area" class="form-label">Area</label><select id="filter-area" name="area_id" class="form-select"><option value="">All areas</option>{% for area in areas %}<option value="{{ area.id }}" data-court="{{ area.branch_ref }}" {{ filters.area_id == area.id ? 'selected' }}>{{ area.name }}</option>{% endfor %}</select></div>
-<div class="col-md-2"><label for="filter-date" class="form-label">Date</label><input id="filter-date" type="date" name="measurement_date" value="{{ filters.measurement_date }}" class="form-control"></div>
+<div class="col-md-3"><label for="filter-from" class="form-label">From</label><input id="filter-from" type="date" name="date_from" value="{{ filters.date_from }}" class="form-control"></div>
+<div class="col-md-3"><label for="filter-to" class="form-label">Through</label><input id="filter-to" type="date" name="date_to" value="{{ filters.date_to }}" class="form-control"></div>
 <div class="col-md-2"><label for="filter-type" class="form-label">Type</label><select id="filter-type" name="measurement_type" class="form-select"><option value="">All types</option>{% for value, type in options.types %}<option value="{{ value }}" {{ filters.measurement_type == value ? 'selected' }}>{{ type.label }}</option>{% endfor %}</select></div>
 <div class="col-md-2"><label for="filter-destination" class="form-label">Destination</label><select id="filter-destination" name="destination" class="form-select"><option value="">All destinations</option>{% for value, label in options.destinations %}<option value="{{ value }}" {{ filters.destination == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select></div>
-<div><button class="btn btn-outline-primary">Filter</button></div></form>
+<div class="d-flex gap-2"><button class="btn btn-outline-primary">Filter</button><a class="btn btn-outline-secondary" href="/circularity/entries">Reset</a></div><p class="form-hint">Leave both dates empty for all history, or choose both endpoints · {{ options.reporting_timezone }}.</p></form>
 {% if access['circularity.write'] %}<a class="btn btn-primary mb-3" href="/circularity/entries?new=1">New measurement</a>{% endif %}
 <div class="card"><div class="table-responsive"><table class="table"><thead><tr><th>Date</th><th>Food court / area</th><th>Measurement</th><th>Quantity</th><th>Destination</th><th>Mode</th></tr></thead><tbody>
 {% for row in records.data %}<tr><td><a href="/circularity/entries?uuid={{ row.uuid }}">{{ row.measurement_date }}</a></td><td>{{ courtNames[row.branch_ref] }} / {{ areaNames[row.area_id] }}</td><td>{{ options.types[row.measurement_type].label }}</td><td>{{ row.quantity }} {{ row.unit }}</td><td>{{ options.destinations[row.destination] }}</td><td>{{ options.modes[row.mode] }}</td></tr>{% else %}<tr><td colspan="6">No measurements found.</td></tr>{% endfor %}

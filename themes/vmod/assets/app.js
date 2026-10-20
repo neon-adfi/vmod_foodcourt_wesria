@@ -359,6 +359,15 @@ document.addEventListener('input', event => {
         event.target.form.dataset.measurementTouched = '1';
     }
 });
+function filterCircularityAreas() {
+    const court = document.querySelector('#filter-court');
+    if (!court) return;
+    document.querySelectorAll('#filter-area option[data-court]').forEach(option => {
+        option.hidden = option.disabled = !!court.value && option.dataset.court !== court.value;
+        if (option.disabled && option.selected) option.parentElement.value = '';
+    });
+}
+filterCircularityAreas();
 document.addEventListener('change', event => {
     const form = event.target.closest('#circularity-entry-form');
     if (form && ['branch_ref', 'area_id', 'measurement_date', 'measurement_type', 'destination'].includes(event.target.name)) checkCircularityGroup();
@@ -367,10 +376,7 @@ document.addEventListener('change', event => {
         form.dataset.modeScope = JSON.stringify(JSON.parse(circularityScope(form)).slice(0, 4));
     }
     if (event.target.id === 'filter-court') {
-        document.querySelectorAll('#filter-area option[data-court]').forEach(option => {
-            option.hidden = option.disabled = !!event.target.value && option.dataset.court !== event.target.value;
-            if (option.disabled && option.selected) option.parentElement.value = '';
-        });
+        filterCircularityAreas();
     }
 });
 document.addEventListener('ajax:setup', event => {

@@ -1,5 +1,6 @@
 <?php namespace Vmod\Circularity\Classes;
 
+use Brick\Math\BigDecimal;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -84,13 +85,70 @@ class CaptureApi
 
     public function entries(Request $request)
     {
+        $query = $this->filteredEntries($request, $this->entryFilters($request));
+        $page = $query->orderByDesc('measurement_date')->orderByDesc('id')->paginate(25);
+        return response()->json(['data' => $page->getCollection()->map(fn ($entry) => $this->entryData($entry)),
+            'current_page' => $page->currentPage(), 'last_page' => $page->lastPage(),
+            'per_page' => $page->perPage(), 'total' => $page->total()]);
+    }
+
+    public function summary(Request $request)
+    {
+        $filters = $this->entryFilters($request);
+        unset($filters['page']);
+        $timezone = config('vmod.circularity::api.reporting_timezone');
+        if (isset($filters['measurement_date'])) {
+            $filters['date_from'] = $filters['date_to'] = $filters['measurement_date'];
+            unset($filters['measurement_date']);
+        } elseif (!isset($filters['date_from'])) {
+            $today = now($timezone);
+            $filters['date_from'] = $today->format('Y-m-01');
+            $filters['date_to'] = $today->format('Y-m-d');
+        }
+        $rows = $this->filteredEntries($request, $filters)
+            ->selectRaw('measurement_type, destination, SUM(quantity) AS quantity, COUNT(*) AS entry_count')
+            ->groupBy('measurement_type', 'destination')->orderBy('measurement_type')->orderBy('destination')->get();
+        $totals = [];
+        foreach (EntryService::TYPES as $type => $definition) {
+            $totals[$type] = ['unit' => $definition['unit'], 'quantity' => null, 'entry_count' => 0, 'destinations' => []];
+        }
+        // One grouped read keeps each total and its breakdown on the same database snapshot.
+        foreach ($rows as $row) {
+            $total = &$totals[$row->measurement_type];
+            $scale = $total['unit'] === 'kg' ? 3 : 0;
+            $quantity = (string) BigDecimal::of($row->quantity)->toScale($scale);
+            $total['quantity'] = (string) BigDecimal::of($total['quantity'] ?? '0')->plus($quantity)->toScale($scale);
+            $total['entry_count'] += (int) $row->entry_count;
+            $total['destinations'][] = ['destination' => $row->destination,
+                'quantity' => $quantity, 'entry_count' => (int) $row->entry_count];
+            unset($total);
+        }
+        return response()->json(['filters' => $filters, 'reporting_timezone' => $timezone, 'totals' => $totals]);
+    }
+
+    private function entryFilters(Request $request): array
+    {
         $filters = Validator::make($request->all(), [
             'branch_ref' => 'nullable|string|max:128', 'area_id' => 'nullable|integer|min:1',
-            'measurement_date' => 'nullable|date_format:Y-m-d',
+            'measurement_date' => 'nullable|date_format:Y-m-d|prohibits:date_from,date_to',
+            'date_from' => 'nullable|required_with:date_to|date_format:Y-m-d',
+            'date_to' => 'nullable|required_with:date_from|date_format:Y-m-d',
             'measurement_type' => ['nullable', Rule::in(array_keys(EntryService::TYPES))],
             'destination' => ['nullable', Rule::in(array_keys(EntryService::DESTINATIONS))],
             'page' => 'nullable|integer|min:1|max:1000000',
         ])->validate();
+        $filters = array_filter($filters, fn ($value) => $value !== null && $value !== '');
+        if (isset($filters['date_from'], $filters['date_to']) && $filters['date_to'] < $filters['date_from']) {
+            throw ValidationException::withMessages(['date_to' => 'The end date must be on or after the start date.']);
+        }
+        if (isset($filters['area_id'])) {
+            $filters['area_id'] = (int) $filters['area_id'];
+        }
+        return $filters;
+    }
+
+    private function filteredEntries(Request $request, array $filters)
+    {
         $context = $request->attributes->get('circularity.context');
         if (!empty($filters['branch_ref'])) {
             ApiAccess::requireBranch($request, $filters['branch_ref']);
@@ -104,10 +162,10 @@ class CaptureApi
                 $query->where($field, $filters[$field]);
             }
         }
-        $page = $query->orderByDesc('measurement_date')->orderByDesc('id')->paginate(25);
-        return response()->json(['data' => $page->getCollection()->map(fn ($entry) => $this->entryData($entry)),
-            'current_page' => $page->currentPage(), 'last_page' => $page->lastPage(),
-            'per_page' => $page->perPage(), 'total' => $page->total()]);
+        if (isset($filters['date_from'])) {
+            $query->whereBetween('measurement_date', [$filters['date_from'], $filters['date_to']]);
+        }
+        return $query;
     }
 
     public function entry(Request $request, string $uuid)

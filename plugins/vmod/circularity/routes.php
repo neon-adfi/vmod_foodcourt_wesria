@@ -11,6 +11,7 @@ Route::prefix('api/circularity/v1')->middleware(ApiAccess::class)->group(functio
 
 Route::prefix('api/circularity/v1')->middleware(ApiAccess::class . ':read')->group(function () {
     Route::get('options', [CaptureApi::class, 'options']);
+    Route::get('summary', [CaptureApi::class, 'summary']);
     Route::get('areas', [CaptureApi::class, 'areas']);
     Route::get('entries', [CaptureApi::class, 'entries']);
     Route::get('entries/{uuid}', [CaptureApi::class, 'entry'])->whereUuid('uuid');

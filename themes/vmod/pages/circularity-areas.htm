@@ -7,7 +7,7 @@ view = "layout"
 view = "areas"
 ==
 <div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }}</div><h1>Circularity areas</h1><p class="text-secondary">Manage the stalls and shared areas where measurements are recorded.</p></div>
-<nav class="d-flex gap-3 mb-4" aria-label="Circularity"><a href="/circularity/entries">Measurements</a><a href="/circularity/areas" aria-current="page">Areas</a></nav>
+<nav class="d-flex gap-3 mb-4" aria-label="Circularity"><a href="/circularity">Overview</a><a href="/circularity/entries">Measurements</a><a href="/circularity/areas" aria-current="page">Areas</a></nav>
 {% if circularityUnavailable %}<div class="alert alert-warning" role="alert">Circularity is temporarily unavailable. <a href="">Try again</a>.</div>{% else %}
 {% if area or filters.new %}
 <a class="btn btn-outline-secondary mb-3" href="/circularity/areas">All areas</a>
