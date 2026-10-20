@@ -13,4 +13,9 @@ class Plugin extends \System\Classes\PluginBase
     {
         \Event::listen('vmod.core.extendPermissions', fn () => ['circularity.read', 'circularity.write']);
     }
+
+    public function registerComponents()
+    {
+        return [\Vmod\CircularityUi\Components\Capture::class => 'circularityCapture'];
+    }
 }

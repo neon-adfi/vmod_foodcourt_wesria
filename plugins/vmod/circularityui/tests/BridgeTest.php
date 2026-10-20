@@ -235,4 +235,74 @@ class BridgeTest extends ApplicationTestCase
         }
         Http::assertSentCount(1);
     }
+
+    public function testCaptureResponsesAreValidatedAndConflictsExposeOnlySafeMetadata(): void
+    {
+        $company = $this->company();
+        $this->acting($company);
+        foreach (['/areas', '/entries', '/options', '/entries/7a63453a-7953-42b3-a352-8042d61e09b4'] as $path) {
+            Http::swap(new Factory);
+            Http::fake(['*' => Http::response(['ok' => true])]);
+            $this->denied(fn () => (new CircularityClient)->request('GET', $path), 503);
+        }
+        $uuid = '7a63453a-7953-42b3-a352-8042d61e09b4';
+        Http::swap(new Factory);
+        Http::fake(['*' => Http::response(['entry' => ['uuid' => $uuid, 'status' => 'removed', 'version' => 2]])]);
+        $this->assertSame(2, (new CircularityClient)->request('GET', '/entries/' . $uuid)['entry']['version']);
+        foreach ([
+            ['code' => 'daily_total_exists', 'uuid' => $uuid, 'want' => ['code' => 'daily_total_exists', 'uuid' => $uuid]],
+            ['code' => 'malicious', 'uuid' => $uuid, 'want' => ['code' => 'conflict']],
+            ['code' => 'entry_changed', 'uuid' => 'https://bad.invalid', 'want' => ['code' => 'entry_changed']],
+        ] as $case) {
+            Http::swap(new Factory);
+            Http::fake(['*' => Http::response(['code' => $case['code'], 'uuid' => $case['uuid'],
+                'url' => 'https://bad.invalid', 'message' => 'private diagnostic'], 409)]);
+            try {
+                (new CircularityClient)->request('POST', '/entries');
+                $this->fail('Conflict must preserve safe recovery metadata.');
+            } catch (\Illuminate\Http\Exceptions\HttpResponseException $exception) {
+                $response = $exception->getResponse();
+                $this->assertSame(409, $response->getStatusCode());
+                $data = json_decode($response->getContent(), true);
+                $this->assertStringNotContainsString('private diagnostic', $response->getContent());
+                $this->assertStringNotContainsString('https://', $response->getContent());
+                unset($data['message']);
+                $this->assertSame($case['want'], $data);
+            }
+        }
+    }
+
+    public function testCaptureComponentKeepsConflictAndUnknownLookupAsNativeAjaxResponses(): void
+    {
+        $this->assertTrue(class_exists(\Vmod\CircularityUi\Components\Capture::class));
+        $company = $this->company();
+        $this->acting($company);
+        $uuid = '7a63453a-7953-42b3-a352-8042d61e09b4';
+        \Request::instance()->setMethod('POST');
+        \Request::instance()->request->replace(['uuid' => $uuid, 'branch_ref' => (string) $company['branch']->id, 'editing' => '0']);
+        Http::fake(['*' => Http::response(['code' => 'daily_total_exists', 'uuid' => $uuid, 'message' => 'private'], 409)]);
+        $response = (new \Vmod\CircularityUi\Components\Capture)->onSaveEntry()->toResponse(\Request::instance());
+        $this->assertSame(409, $response->getStatusCode());
+        $data = json_decode($response->getContent(), true);
+        $this->assertSame($uuid, $data['circularityConflict']['uuid']);
+        $this->assertFalse($data['__ajax']['ok']);
+        Http::swap(new Factory);
+        Http::fake(['*' => Http::response(['message' => 'private'], 404)]);
+        $result = (new \Vmod\CircularityUi\Components\Capture)->onCheckEntry();
+        $this->assertSame('not_found', $result['circularityCheck']['status']);
+        $this->assertArrayNotHasKey('version', $result['circularityCheck']);
+        Http::assertSent(fn ($request) => $request->method() === 'GET' && str_ends_with($request->url(), '/entries/' . $uuid));
+    }
+
+    public function testProviderValidationTextCannotInjectMarkupIntoNativeErrors(): void
+    {
+        $this->acting($this->company());
+        Http::fake(['*' => Http::response(['errors' => ['notes' => ['Invalid <img src=x onerror=alert(1)>']]], 422)]);
+        try {
+            (new CircularityClient)->request('POST', '/entries');
+            $this->fail('Validation expected.');
+        } catch (\October\Rain\Exception\ValidationException $exception) {
+            $this->assertSame(['notes' => ['Invalid &lt;img src=x onerror=alert(1)&gt;']], $exception->errors());
+        }
+    }
 }

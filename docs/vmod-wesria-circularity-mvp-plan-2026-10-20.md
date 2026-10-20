@@ -4,7 +4,7 @@
 
 **Date:** 2026-10-20, Asia/Kuala_Lumpur.
 
-**Status:** Phase 1 implemented and verified locally on 2026-10-20. [Evidence](evidence/circularity-phase-1-2026-10-20.md). Phase 2 and later phases remain not started.
+**Status:** Phases 1 and 2 complete locally. Phase 2 started from clean `main` at `a42add5`. See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md). Phase 3 and later remain not started.
 
 **Inspected baseline:** `cfe3812`, `/Users/stev/htdoc/vmod_wesria`.
 
@@ -28,6 +28,7 @@
 - Inputs and results remain editable/current: no review queue, approval, period close, frozen payload, immutable report or combined circularity score.
 - Manual forms with optional notes/reference text only. Uploads, imports, devices, POS, ERP transactions and carbon calculations are outside this MVP.
 - Record a physical quantity once. A shared area represents a measurement location, not a court-wide subtotal to add to already-recorded stall quantities.
+- Phase 2 grilling confirmed immutable entry court ownership: remove/recreate to correct the court. Dates may be today or earlier in the reporting timezone. Area names are trimmed and unique per court, including inactive rows, using the existing case-insensitive name comparison. The Active checkbox can reactivate the same area.
 
 ### Ownership
 
@@ -39,7 +40,7 @@
 | `Vmod.CircularityUi` | Workspace authorization, HTTP client and native frontend components | Core; no provider model, service or database access |
 | `themes/vmod` | Navigation, capture forms, lists and dashboard | Existing October/Tabler assets |
 
-The provider and UI connector are separate plugins so the provider can move while the UI remains in Wesria. Use the existing development database with `vmod_circularity_*` tables. No cross-plugin foreign keys, joins, model imports, shared PHP contracts or fallback direct calls. External company/branch/frontend-user references are opaque strings; preserve their source namespace when moving hosts.
+The provider and UI connector are separate plugins so the provider can move while the UI remains in Wesria. Use the existing development database with `vmod_circularity_*` tables. No cross-plugin foreign keys, joins, model imports, shared PHP contracts or fallback direct calls. External company/branch/frontend-user references are opaque strings; preserve their source namespace when moving hosts. Namespace, company and branch references must have no leading/trailing whitespace: reject ambiguous authority instead of trimming it, because the installed case-sensitive MySQL collation pads spaces.
 
 The [generic ERP plan](vmod-wesria-erp-mvp-plan-2026-10-15.md) remains authoritative for ERP behavior. Apply the [runtime contract](runtime-phase-1.md), [plugin standards](october-plugin-standards-design-2026-03-30.md) and [frontend form standards](october-frontend-form-handling-standards-2026-04-30.md). Event OS is an API-boundary reference, not a source of circularity formulas or frozen-record requirements.
 
@@ -52,6 +53,7 @@ The [generic ERP plan](vmod-wesria-erp-mvp-plan-2026-10-15.md) remains authorita
 - Entries carry a stable UUID, area, measurement date, type, mode, quantity, destination, optional notes/reference, frontend actor references, version, timestamps and `deleted_at`. Store tenant/branch scope explicitly and enforce agreement with the scoped area.
 - Measurement codes: `food_waste`, `packaging_waste`, `mixed_waste`, `reusable_issued`, `reusable_returned`. Modes: `daily_total`, `individual`.
 - Waste uses nonnegative kilograms, at most three decimal places. Reusable items use nonnegative whole counts. Unit is determined by type, not submitted as an independent authority. Explicit zero is valid; an absent entry is not zero.
+- Store quantities as `DECIMAL(15,3)` and exchange strings; reject floats, exponent input and overflow before SQL. Scope references use case-sensitive collation. The sole internal foreign key is entry → area, without cascading deletion.
 - Waste destinations: `unknown`, `landfill`, `incineration`, `recycling`, `composting`, `anaerobic_digestion`, `animal_feed`, `other`. Count entries use `not_applicable`. These describe recorded destinations, not independently verified treatment or recovery.
 - Store measurement dates as dates. Default entry date and dashboard month use configurable reporting timezone `Asia/Kuala_Lumpur`; preserve the application's existing UTC timestamp configuration.
 - Summaries sum active saved quantities in the provider, using exact decimal arithmetic/SQL aggregation. Show each waste stream separately and separate issued/returned counts. Never subtract them into an inventory balance or reject returns merely because they exceed issues in the selected date range.
@@ -64,8 +66,8 @@ Use native plugin `routes.php` and a small concrete HTTP client; no SDK, reposit
 | Endpoint under `/api/circularity/v1` | Purpose |
 | --- | --- |
 | `GET /health` | Protected service/version check; no environment or credential disclosure |
-| `GET /options` | Provider-owned measurement types, units, modes and destination options |
-| `GET/POST /areas`, `PATCH /areas/{id}` | Scoped area listing, creation, rename and deactivation |
+| `GET /options` | Provider-owned measurement types, units, modes, destination options, reporting timezone and today |
+| `GET/POST /areas`, `PATCH /areas/{id}` | Scoped area listing, creation, rename, deactivation and reactivation |
 | `GET /entries`, `GET /entries/{uuid}` | Scoped filtering, pagination and current entry lookup |
 | `POST /entries`, `PATCH/DELETE /entries/{uuid}` | Create, edit and soft-remove |
 | `GET /summary` | Current totals by date range, permitted court/area and recorded destination |
@@ -80,12 +82,14 @@ Use native plugin `routes.php` and a small concrete HTTP client; no SDK, reposit
 
 ### Save, edit and removal integrity
 
-- Every create form receives a UUID that survives failed/uncertain submissions. Enforce its uniqueness. A duplicate UUID may return the active current entry only when its normalized saved fields match the submitted create fields. Changed or removed entries return a conflict; a duplicate create never overwrites or resurrects them. Do not store the original payload to implement replay.
-- For daily mode, selecting an existing daily combination loads that total for editing. A concurrent duplicate detected at save returns a conflict with a scoped link to the existing entry, preserving unsaved input.
+- Every create form receives a UUID in its URL and hidden input that survives failed/uncertain submissions and reloads. A duplicate UUID may return the active current entry only when its current normalized measurement fields match the complete submitted create fields. Version alone does not reject replay; differing current fields or removal do. Duplicate creation never writes or resurrects. Do not store the original payload to implement replay.
+- For daily mode, an existing combination loads automatically only while quantity, reference and notes remain untouched. Otherwise show **Open existing total** and retain inputs. An existing-entry edit never switches UUID automatically. A save conflict returns only allowlisted conflict metadata; the frontend constructs its own scoped links.
 - Edits and removals require the displayed row version. Stale versions fail without overwriting; successful mutations increment the version. Uncertain outcomes are checked by UUID before any new submission.
 - Lock the scoped parent area before each entry mutation, then re-read active entries for the affected group. Enforce one active mode and daily destination uniqueness inside that transaction. Every writer, including removal, follows this protocol.
 - Changes to area/date/type/destination revalidate the resulting group. Moving areas locks both authorized areas in ascending ID order and rechecks the source entry/version before writing. No partial move or cross-tenant reassignment.
 - Removed rows do not contribute to summaries, block a new daily entry or prevent a mode change. Preserve their UUIDs. A deliberate new entry gets a new UUID.
+- Authorized removed UUID lookup returns a minimal removed marker. Unknown/out-of-scope UUIDs return 404. **Check saved entry** is read-only and never replaces inputs or advances the displayed version. Failed lookup stays uncertain; 404 does not prove an earlier in-flight save cannot finish. Any later create attempt retains its UUID.
+- Lock area updates on the same parent row and require their displayed version. Handle cross-area UUID insert races through the unique index, transaction rollback and fresh scoped lookup. Require one mode per group across destinations; edits cannot change their mode.
 - Do not rely on a MySQL unique index containing nullable `deleted_at` to enforce active-row uniqueness. The area lock and active-row check are the required concurrent-write protection.
 - Add this intentional-ceiling comment beside the lock: “Entry writes serialize per area; sufficient for manual capture. Introduce narrower group locks only if measured contention warrants it.”
 
@@ -100,7 +104,7 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 | Phase | Independently testable deliverable | Status |
 | --- | --- | --- |
 | 1 | Environment, API boundary and frontend access foundation | Complete locally |
-| 2 | End-to-end measurement capture and correction | Not started |
+| 2 | End-to-end measurement capture and correction | Local acceptance in progress |
 | 3 | Live totals and completed frontend views | Not started |
 | 4 | Integrated MVP qualification | Not started |
 | 5 | Independent-hosting rehearsal | Not started |
@@ -132,12 +136,12 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 
 **Produces:** Areas and all five measurement types, usable from the existing frontend through the API.
 
-- [ ] Add the two tables and provider-owned options. Validate scoped IDs, input shape, dates, mode, type, destination and quantity before persistence.
-- [ ] Implement area management plus create/list/read/edit/remove operations, UUID duplicate protection, row versions and the area-lock protocol.
-- [ ] Deliver the first real form in this phase, including both input modes, mixed waste, existing-daily-total editing and the remove-before-mode-switch rule.
-- [ ] Reuse native validation and current frontend recovery behavior. An ambiguous response must preserve the form/UUID and direct the user to check the saved entry.
-- [ ] Verify same-group mode conflicts, duplicate daily rows, valid multiple individual readings, deleted-UUID replay, stale edits and authorized cross-group edits on disposable MySQL.
-- [ ] Run egolite save → reload → edit → remove, mode switching, read-only permissions, foreign branch rejection and unavailable-service scenarios. Inspect desktop/mobile screenshots.
+- [x] Add the two tables and provider-owned options. Validate scoped IDs, input shape, dates, mode, type, destination and quantity before persistence.
+- [x] Implement area management plus create/list/read/edit/remove operations, UUID duplicate protection, row versions and the area-lock protocol.
+- [x] Deliver the first real form in this phase, including both input modes, mixed waste, existing-daily-total editing and the remove-before-mode-switch rule.
+- [x] Reuse native validation and current frontend recovery behavior. An ambiguous response must preserve the form/UUID and direct the user to check the saved entry.
+- [x] Verify same-group mode conflicts, duplicate daily rows, valid multiple individual readings, deleted-UUID replay, stale edits and authorized cross-group edits on disposable MySQL.
+- [x] Run egolite save → reload → edit → remove, mode switching, read-only permissions, foreign branch rejection and unavailable-service scenarios. Inspect desktop/mobile screenshots.
 
 **Gate:** Management can capture and correct real measurements via HTTP, without double counting from duplicate creates or mixed modes. No approval, snapshot or restore UI exists.
 

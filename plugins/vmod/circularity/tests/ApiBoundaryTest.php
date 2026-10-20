@@ -90,4 +90,16 @@ class ApiBoundaryTest extends ApplicationTestCase
         $context['branch_refs'] = ['court-b'];
         $this->assertSame(404, $this->send('/_test/circularity/read', self::TOKEN, $context)->getStatusCode());
     }
+
+    public function testValidationIsJsonBeforeTheHostCmsErrorRendererCanReplaceIt(): void
+    {
+        // Normal HTTP boot lets October's CMS renderer replace validation with an HTML 500.
+        \Event::listen('exception.beforeRender', fn () => 'Host CMS error page');
+        $this->app['router']->get('/api/circularity/v1/_test-invalid', function () {
+            \Illuminate\Support\Facades\Validator::make(['quantity' => 'bad'], ['quantity' => 'integer'])->validate();
+        })->middleware(ApiAccess::class . ':read');
+        $response = $this->send('/api/circularity/v1/_test-invalid', self::TOKEN, $this->context());
+        $this->assertSame(422, $response->getStatusCode());
+        $this->assertArrayHasKey('quantity', json_decode($response->getContent(), true)['errors']);
+    }
 }

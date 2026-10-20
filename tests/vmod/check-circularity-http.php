@@ -1,5 +1,6 @@
 <?php
 
+// phpcs:disable PSR1.Files.SideEffects -- Guarded standalone HTTP runner and test front controller.
 // Test-only front controller and runner. Explicit guard precedes any application boot or writes.
 require __DIR__ . '/DatabaseGuard.php';
 \Vmod\Tests\DatabaseGuard::assertEnvironment();
@@ -64,8 +65,10 @@ foreach (['ui-storage', 'ui-cache', 'api', 'plugins', 'plugins/vmod'] as $direct
     chmod($path, 0777);
 }
 foreach (['ui-storage', 'ui-cache'] as $directory) {
-    foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator('/proof/' . $directory, FilesystemIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::SELF_FIRST) as $file) {
+    foreach (new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator('/proof/' . $directory, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::SELF_FIRST
+    ) as $file) {
         chown($file->getPathname(), 'www-data');
     }
 }
@@ -139,6 +142,38 @@ try {
     checkCircularity($scoped->status() === 200 && $scoped->json('scope.source_namespace') === 'wesria-proof', 'Trusted namespace or scoped context failed.');
     checkCircularity($http->get($base . '/api/circularity/v1/__scope/foreign')->status() === 404, 'Foreign branch was not hidden.');
     echo "PASS: scoped context and foreign-branch denial over HTTP.\n";
+    $context = ['tenant_ref' => 'http-' . bin2hex(random_bytes(8)), 'branch_refs' => ['court-a'],
+        'actor_ref' => 'frontend-user-http', 'permissions' => ['circularity.read', 'circularity.write']];
+    $http->replaceHeaders(['X-Circularity-Context' => json_encode($context)]);
+    $api = $base . '/api/circularity/v1';
+    checkCircularity($http->get($api . '/options')->json('reporting_timezone') === 'Asia/Kuala_Lumpur', 'Options failed.');
+    $areaResponse = $http->post($api . '/areas', ['branch_ref' => 'court-a', 'name' => 'HTTP shared area', 'kind' => 'shared_area']);
+    checkCircularity($areaResponse->status() === 201, 'HTTP area creation failed: ' . $areaResponse->status());
+    $area = $areaResponse->json('area');
+    $payload = ['uuid' => (string) \Illuminate\Support\Str::uuid(), 'branch_ref' => 'court-a', 'area_id' => $area['id'],
+        'measurement_date' => '2026-01-01', 'measurement_type' => 'mixed_waste', 'mode' => 'daily_total',
+        'quantity' => '0', 'destination' => 'unknown', 'created_actor_ref' => 'forged'];
+    $invalid = $http->post($api . '/entries', array_replace($payload, ['quantity' => '1e3']));
+    checkCircularity(
+        $invalid->status() === 422 && is_array($invalid->json('errors.quantity')),
+        'HTTP quantity validation format failed: ' . $invalid->status() . ' ' . json_encode($invalid->json())
+    );
+    $created = $http->post($api . '/entries', $payload);
+    checkCircularity($created->status() === 201 && $created->json('entry.quantity') === '0.000'
+        && $created->json('entry.created_actor_ref') === 'frontend-user-http', 'HTTP entry creation/actor failed.');
+    $uuid = $payload['uuid'];
+    checkCircularity($http->post($api . '/entries', $payload)->status() === 200, 'HTTP matching replay failed.');
+    $updated = $http->patch($api . '/entries/' . $uuid, ['version' => 1, 'quantity' => '2.125']);
+    checkCircularity($updated->status() === 200 && $updated->json('entry.version') === 2, 'HTTP edit failed.');
+    checkCircularity($http->patch($api . '/entries/' . $uuid, ['version' => 1, 'quantity' => '3'])->status() === 409, 'HTTP stale edit was accepted.');
+    checkCircularity($http->get($api . '/entries', ['area_id' => $area['id']])->json('total') === 1, 'HTTP scoped list failed.');
+    checkCircularity($http->delete($api . '/entries/' . $uuid, ['version' => 2])->json('entry.status') === 'removed', 'HTTP removal failed.');
+    checkCircularity($http->get($api . '/entries/' . $uuid)->json('entry.status') === 'removed', 'HTTP removed lookup failed.');
+    checkCircularity($http->post($api . '/entries', $payload)->status() === 409, 'HTTP removed UUID resurrected.');
+    checkCircularity($http->patch($api . '/areas/' . $area['id'], ['version' => 1, 'is_active' => false])->status() === 200, 'HTTP area update failed.');
+    $http->replaceHeaders(['X-Circularity-Context' => json_encode(array_replace($context, ['tenant_ref' => 'other-tenant']))]);
+    checkCircularity($http->get($api . '/entries/' . $uuid)->status() === 404, 'HTTP removed record leaked across tenants.');
+    echo "PASS: provider-only HTTP options, area CRUD, measurement CRUD, exact zero, replay, stale writes and removed-record isolation.\n";
 } finally {
     proc_terminate($process, 3); // Native SIGQUIT: drain the test workers.
     proc_close($process);

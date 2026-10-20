@@ -22,3 +22,4 @@ details[open] > summary { margin-bottom: .5rem; }
 [data-invoice-link] { flex-wrap: wrap; }
 
 #request-error { display: block; }
+#circularity-entry-form [data-validate-error]:empty { display: none; }

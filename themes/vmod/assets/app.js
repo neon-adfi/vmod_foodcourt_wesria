@@ -1,6 +1,7 @@
 import { bootstrap } from './tabler.min.js';
 window.bootstrap = bootstrap;
 
+const readOnlyHandlers = ['invoiceReferences::onChoices', 'circularityCapture::onGroup', 'circularityCapture::onCheckEntry'];
 // Server validation is authoritative; no identity or form state is copied into browser storage.
 async function checkPageContext(context) {
     try {
@@ -86,7 +87,7 @@ document.addEventListener('ajax:setup', event => {
             options.data = { ...options.data, expected_base_uom: product.selectedOptions[0]?.dataset.baseUom ?? '' };
         }
     }
-    if (event.detail.context.handler !== 'invoiceReferences::onChoices') {
+    if (!readOnlyHandlers.includes(event.detail.context.handler)) {
         document.querySelector('#request-error')?.classList.add('d-none');
         document.querySelectorAll('[data-request-notice].alert-success, .flash-message.success').forEach(notice => notice.remove());
     }
@@ -121,7 +122,10 @@ function showRequestError(message, recovery = false, kind = '') {
         const url = new URL(location.href);
         const key = url.pathname.startsWith('/catalogue/') ? 'edit' : 'id';
         const id = url.searchParams.get(key);
-        const recordUrl = url.pathname + (/^[1-9]\d*$/.test(id ?? '') ? `?${key}=${id}` : '');
+        const uuid = url.searchParams.get('uuid');
+        const recordUrl = url.pathname === '/circularity/entries' && validCircularityUuid(uuid)
+            ? `/circularity/entries?uuid=${uuid}`
+            : url.pathname + (/^[1-9]\d*$/.test(id ?? '') ? `?${key}=${id}` : '');
         for (const [label, href] of [['Sign in', '/auth'], ['Check saved records', recordUrl]]) {
             const link = document.createElement('a');
             link.textContent = label; link.href = href; link.target = '_blank'; link.rel = 'noopener';
@@ -133,12 +137,12 @@ function showRequestError(message, recovery = false, kind = '') {
 }
 document.addEventListener('ajax:request-error', event => {
     const { responseCode, context } = event.detail;
-    const lookup = context.handler === 'invoiceReferences::onChoices';
+    const lookup = readOnlyHandlers.includes(context.handler);
     let message;
     if (responseCode === 419) message = 'Your security token has expired. This request was rejected.';
     else if (responseCode === 401) message = 'Your session has expired. This request was rejected.';
     else if (responseCode <= 0) message = lookup
-        ? 'Documents could not be loaded. Try Find documents again.'
+        ? (context.handler === 'invoiceReferences::onChoices' ? 'Documents could not be loaded. Try Find documents again.' : 'The lookup failed. Try checking again; the earlier save outcome remains uncertain.')
         : 'The connection failed. Save outcome unknown. Check saved records before retrying.';
     if (!message) return;
     event.preventDefault();
@@ -150,11 +154,11 @@ window.addEventListener('ajax:before-send', event => { event.detail.context.requ
 document.addEventListener('ajax:request-cancel', event => {
     const context = event.detail.context;
     // Confirmation dismissal precedes sending; only sent mutations have an unknown outcome.
-    if (!context.requestSent || context.handler === 'invoiceReferences::onChoices') return;
+    if (!context.requestSent || readOnlyHandlers.includes(context.handler)) return;
     showRequestError('The request was cancelled. Save outcome unknown. Check saved records before retrying. If sign-in is needed, sign in in another tab, verify your workspace and open a fresh form. Keep this tab to copy your entered values.', true);
 });
 document.addEventListener('ajax:request-success', event => {
-    if (event.detail.context.handler === 'invoiceReferences::onChoices') {
+    if (readOnlyHandlers.includes(event.detail.context.handler)) {
         document.querySelector('#request-error[data-error-kind="lookup"]')?.classList.add('d-none');
     }
 });
@@ -304,3 +308,136 @@ document.addEventListener('ajax:before-update', event => {
     }
 });
 validateInvoiceLinks();
+
+function validCircularityUuid(uuid) {
+    return /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(uuid ?? '');
+}
+function circularityLink(container, uuid, label, newTab = true) {
+    if (!validCircularityUuid(uuid)) return;
+    const link = document.createElement('a');
+    link.href = `/circularity/entries?uuid=${uuid}`; link.textContent = label;
+    link.className = 'd-inline-block me-3 mt-2';
+    if (newTab) { link.target = '_blank'; link.rel = 'noopener'; }
+    container.append(document.createTextNode(' '), link);
+}
+function circularityScope(form) {
+    return JSON.stringify(['branch_ref', 'area_id', 'measurement_date', 'measurement_type', 'destination'].map(key => form.elements[key].value));
+}
+function circularityControls() {
+    const form = document.querySelector('#circularity-entry-form');
+    if (!form) return;
+    const court = form.elements.branch_ref.value;
+    for (const option of form.elements.area_id.options) {
+        if (!option.value) continue;
+        option.hidden = option.disabled = option.dataset.court !== court;
+        if (option.disabled && option.selected) form.elements.area_id.value = '';
+    }
+    const unit = form.elements.measurement_type.selectedOptions[0].dataset.unit;
+    document.querySelector('#capture-unit').textContent = unit;
+    form.elements.quantity.inputMode = unit === 'count' ? 'numeric' : 'decimal';
+    for (const option of form.elements.destination.options) {
+        option.hidden = option.disabled = (option.value === 'not_applicable') !== (unit === 'count');
+    }
+    if (form.elements.destination.selectedOptions[0]?.disabled) {
+        form.elements.destination.value = unit === 'count' ? 'not_applicable' : 'unknown';
+    }
+}
+function checkCircularityGroup() {
+    const form = document.querySelector('#circularity-entry-form');
+    if (!form) return;
+    circularityControls();
+    if (['branch_ref', 'area_id', 'measurement_date'].some(key => !form.elements[key].value)) return;
+    window.oc.request(form, 'circularityCapture::onGroup').catch(() => {});
+}
+function requireCircularityCheck(form) {
+    form.dataset.needsCheck = '1';
+    form.querySelectorAll('[data-circularity-save]').forEach(button => { button.disabled = true; });
+    document.querySelector('#capture-recovery').textContent = 'Your values and displayed version are retained. Check saved entry before trying again.';
+}
+document.addEventListener('input', event => {
+    if (event.target.closest('#circularity-entry-form') && ['quantity', 'reference', 'notes'].includes(event.target.name)) {
+        event.target.form.dataset.measurementTouched = '1';
+    }
+});
+document.addEventListener('change', event => {
+    const form = event.target.closest('#circularity-entry-form');
+    if (form && ['branch_ref', 'area_id', 'measurement_date', 'measurement_type', 'destination'].includes(event.target.name)) checkCircularityGroup();
+    if (form && event.target.id === 'capture-mode') {
+        form.elements.mode.value = event.target.value;
+        form.dataset.modeScope = JSON.stringify(JSON.parse(circularityScope(form)).slice(0, 4));
+    }
+    if (event.target.id === 'filter-court') {
+        document.querySelectorAll('#filter-area option[data-court]').forEach(option => {
+            option.hidden = option.disabled = !!event.target.value && option.dataset.court !== event.target.value;
+            if (option.disabled && option.selected) option.parentElement.value = '';
+        });
+    }
+});
+document.addEventListener('ajax:setup', event => {
+    const form = event.target.closest?.('#circularity-entry-form');
+    if (!form) return;
+    const context = event.detail.context;
+    if (context.handler === 'circularityCapture::onGroup') context.circularityScope = circularityScope(form);
+    if (['circularityCapture::onSaveEntry', 'circularityCapture::onRemoveEntry'].includes(context.handler) && form.dataset.needsCheck === '1') {
+        event.preventDefault();
+        showRequestError('Check saved entry before trying again. Your values and displayed version are retained.');
+    }
+});
+document.addEventListener('ajax:request-error', event => {
+    const form = event.target.closest?.('#circularity-entry-form');
+    const { context, responseCode, message } = event.detail;
+    const serverError = responseCode >= 500 && responseCode <= 599;
+    if (!form || readOnlyHandlers.includes(context.handler) || (!serverError && ![0, 409].includes(Math.max(0, responseCode)))) return;
+    requireCircularityCheck(form);
+    if (responseCode === 409 || serverError) {
+        event.preventDefault();
+        showRequestError(serverError ? 'Circularity is unavailable. Save outcome unknown. Check saved entry before retrying.'
+            : 'This measurement conflicts with saved data. Check saved entry before retrying.');
+        if (message?.circularityConflict?.code === 'daily_total_exists') {
+            circularityLink(document.querySelector('#capture-recovery'), message.circularityConflict.uuid, 'Open existing total');
+        }
+    }
+});
+document.addEventListener('ajax:request-cancel', event => {
+    const form = event.target.closest?.('#circularity-entry-form');
+    if (form && event.detail.context.requestSent && !readOnlyHandlers.includes(event.detail.context.handler)) requireCircularityCheck(form);
+});
+document.addEventListener('ajax:request-success', async event => {
+    const form = event.target.closest?.('#circularity-entry-form');
+    if (!form) return;
+    const { data, context } = event.detail;
+    if (context.handler === 'circularityCapture::onCheckEntry') {
+        const result = data.circularityCheck;
+        const recovery = document.querySelector('#capture-recovery');
+        const messages = {
+            active: 'A saved entry exists. Open it to review. Your entered values and displayed version have not changed.',
+            removed: 'This entry was removed. It cannot be saved again with this identity.',
+            not_found: 'No entry was found yet. An earlier request may still finish. Any retry will use the same entry identity.'
+        };
+        recovery.textContent = messages[result.status];
+        if (result.status === 'active') circularityLink(recovery, result.uuid, 'Open saved entry');
+        form.dataset.needsCheck = result.status === 'removed' ? '1' : '';
+        form.querySelectorAll('[data-circularity-save]').forEach(button => { button.disabled = result.status === 'removed'; });
+    }
+    if (context.handler !== 'circularityCapture::onGroup' || context.circularityScope !== circularityScope(form)) return;
+    const group = data.circularityGroup;
+    const modeScope = JSON.stringify(JSON.parse(context.circularityScope).slice(0, 4));
+    const mode = document.querySelector('#capture-mode');
+    mode.disabled = form.dataset.editing === '1' || !!group.mode;
+    if (form.dataset.editing !== '1' && (group.mode || form.dataset.modeScope !== modeScope)) {
+        mode.value = form.elements.mode.value = group.mode ?? 'daily_total';
+    }
+    form.dataset.modeScope = modeScope;
+    const notice = document.querySelector('#capture-group');
+    notice.textContent = group.mode ? `This group uses ${group.mode === 'daily_total' ? 'daily totals' : 'individual entries'}. Remove all its measurements before switching.`
+        : 'No measurements in this group yet. Choose daily total or individual entries.';
+    if (!group.uuid || group.uuid === form.elements.uuid.value) return;
+    circularityLink(notice, group.uuid, 'Open existing total');
+    if (form.dataset.editing === '1' || form.dataset.measurementTouched || form.dataset.needsCheck) return;
+    const status = await checkPageContext(form.dataset.workspaceContext);
+    if (status === 200 && !form.dataset.measurementTouched && !form.dataset.needsCheck && context.circularityScope === circularityScope(form)) {
+        location.assign(`/circularity/entries?uuid=${group.uuid}`);
+    }
+});
+circularityControls();
+checkCircularityGroup();

@@ -13,7 +13,7 @@ class ApiAccess
         $hash = config('vmod.circularity::api.token_hash');
         $namespace = config('vmod.circularity::api.source_namespace');
         if (!is_string($hash) || !preg_match('/\A[a-f0-9]{64}\z/', $hash)
-            || !is_string($namespace) || trim($namespace) === '') {
+            || !is_string($namespace) || trim($namespace) === '' || trim($namespace) !== $namespace) {
             return response()->json(['message' => 'Circularity service is unavailable.'], 503);
         }
         $token = $request->bearerToken();
@@ -48,6 +48,12 @@ class ApiAccess
             return response()->json(['message' => 'Invalid circularity context.'], 422);
         }
         $context = $validator->validated();
+        // MySQL utf8mb4_bin pads spaces: reject ambiguous authority; never normalize it.
+        foreach (array_merge([$context['tenant_ref']], $context['branch_refs']) as $reference) {
+            if ($reference !== trim($reference)) {
+                return response()->json(['message' => 'Invalid circularity context.'], 422);
+            }
+        }
         if (!$context['branch_refs'] || !in_array('circularity.read', $context['permissions'], true)
             || ($permission === 'write' && !in_array('circularity.write', $context['permissions'], true))) {
             return response()->json(['message' => 'Circularity access denied.'], 403);

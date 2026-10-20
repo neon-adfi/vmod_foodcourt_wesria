@@ -1,2 +1,5 @@
 1.0.1:
     - Establish the authenticated stateless API boundary
+1.0.2:
+    - Add court areas and versioned measurement capture
+    - create_capture_tables.php

@@ -121,3 +121,11 @@ Private `wesria-circularity.env` supplies `CIRCULARITY_API_URL`, `CIRCULARITY_AL
 Run `bash tests/vmod/check-circularity-http.sh` serially after starting `mysql-test`. It proves real nested HTTP with one worker in each pool and provider-only boot using temporary containers. No new persistent service is required. The native health endpoint is protected; an unauthenticated browser receiving 401 is expected.
 
 For future permission-registry activation, enter maintenance, gracefully drain old FPM requests, run the explicit-prior-key grant migration and verify existing administrators before reopening. Do not hold Core database locks across HTTP. Rollback retains grants/audit history; reactivation needs an administrator preflight rather than automatically rerunning grants.
+
+## Circularity Phase 2
+
+Provider 1.0.2 adds only `vmod_circularity_areas` and `vmod_circularity_entries`; the connector remains 1.0.1. Local capture is available at `/circularity/entries` and area management at `/circularity/areas`, using the existing API pool and private configuration. No runtime services, credentials or grants changed. Reporting dates use `CIRCULARITY_REPORTING_TIMEZONE`, default `Asia/Kuala_Lumpur`.
+
+[Phase 2 evidence and repeat commands](evidence/circularity-phase-2-2026-10-20.md) record 93 Vmod tests, seven observed circularity MySQL races, real HTTP/provider-only checks and 13 browser scenario groups. The guarded concurrency harness accepts the existing disposable-MySQL observer credential privately on stdin. Browser acceptance uses `seed-circularity-phase2.php` and `circularity-phase2.mjs`; its mode-0600 fixture remains outside Git. TaskSpace 15 is finished.
+
+Migration preserves existing schemas/data. If rollback is needed, retain both new tables and disable the new UI/routes; do not drop captured history. Phase 3, commit, push and deployment are outside this delivery.
