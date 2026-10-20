@@ -1,0 +1,3 @@
+1.0.1:
+    - Register circularity access and preserve existing full-permission roles
+    - grant_circularity_permissions.php

@@ -18,7 +18,8 @@ class FoundationInstallTest extends ApplicationTestCase
         $this->assertSame(0, $kernel->call('october:migrate', ['--no-interaction' => true]));
         $this->assertSame('8.2.34', PHP_VERSION);
         $this->assertSame('v3.7.2', \Composer\InstalledVersions::getPrettyVersion('rainlab/user-plugin'));
-        $this->assertEqualsCanonicalizing(['October.Demo', 'RainLab.User', 'Vmod.Core', 'Vmod.Erp'], array_keys(\System\Classes\PluginManager::instance()->getPlugins()));
+        $this->assertEqualsCanonicalizing(['October.Demo', 'RainLab.User', 'Vmod.Core', 'Vmod.Erp',
+            'Vmod.Circularity', 'Vmod.CircularityUi'], array_keys(\System\Classes\PluginManager::instance()->getPlugins()));
         foreach (\Composer\InstalledVersions::getInstalledPackages() as $package) {
             $this->assertDoesNotMatchRegularExpression('/^(gaia|vector|renatio)\\/|vmod\\/(print|ubs|emailparser)/i', $package);
         }

@@ -15,6 +15,8 @@ Neither MySQL service publishes host ports. The PHP application is disconnected 
 
 Four `wesria-*.env` files in the external runtime directory contain private per-service credentials, created with mode 0600. Do not print, commit, or copy them into the application. Test ownership is `VMOD_TEST_DATABASE_OWNER=vmod_wesria_phase1`. Seed or destructive test operations require that marker and the exact disposable host/database/user; development seeding must separately verify `APP_ENV=local` and `mysql-dev/vmod_wesria_dev`. Phase 1 does not add synthetic development accounts.
 
+Circularity Phase 1 later adds a fifth private file, `wesria-circularity.env`, to `php-tech`; see the circularity section below. The four original files remain unchanged.
+
 ## Commands
 
 Use this shell array in Bash or Zsh:
@@ -107,3 +109,15 @@ Phase 5 is qualified locally on the same served checkout and owned services; see
 Run the guarded `tests/vmod/check-sales-concurrency.php` with the same private observer-stdin invocation as the purchasing harness. It forces twelve exact MySQL waits and reconciles physical stock, line reservations and delivery consumption. The affected nine purchasing and six catalogue waits also pass. The focused ERP suite passes 26 tests / 440 assertions; the single final aggregate run passes 59 Vmod tests / 548 assertions and five Core races, with the framework’s four existing SQLite skips unchanged.
 
 Browser acceptance uses `tests/e2e/seed-phase5.php` and `tests/e2e/phase5.mjs`. Seed only in the owned local runtime and keep its JSON at `/private/tmp/wesria-phase5-acceptance.json` with mode 0600. TaskSpace 33 completed nine scenario groups, ten inspected screenshots and zero JavaScript runtime errors; it was finished after inspection. Reuse a space while resuming a run; future independent acceptance starts a new run. Additive fixture records remain. Stop before Phase 6.
+
+## Circularity Phase 1
+
+`Vmod.Circularity` and `Vmod.CircularityUi` 1.0.1 are installed locally. [Evidence and repeat commands](evidence/circularity-phase-1-2026-10-20.md) record the bounded maintenance activation, administrator preservation and HTTP/browser checks. This is a separate product plan; circularity measurement capture remains Phase 2.
+
+The existing `php-tech` service now has the unchanged UI pool on 9000 and a two-worker ondemand `circularity` pool on 9001, configured by `php/fpm.d/zz-circularity.conf`. Nginx sends `/api/circularity/v1/` to the latter. The connector calls `http://nginx-tech/api/circularity/v1`; the public local hostname is not the internal transport. Both pools share application/environment trust; the split reserves workers for nested HTTP calls.
+
+Private `wesria-circularity.env` supplies `CIRCULARITY_API_URL`, `CIRCULARITY_ALLOW_INTERNAL_HTTP`, `CIRCULARITY_API_TOKEN`, `CIRCULARITY_TOKEN_HASH` (SHA-256 of that token) and `CIRCULARITY_SOURCE_NAMESPACE=wesria`. Retain mode 0600 and keep it outside Git. HTTPS remains required outside the explicit local/testing internal exception. Do not forward frontend session cookies to the API.
+
+Run `bash tests/vmod/check-circularity-http.sh` serially after starting `mysql-test`. It proves real nested HTTP with one worker in each pool and provider-only boot using temporary containers. No new persistent service is required. The native health endpoint is protected; an unauthenticated browser receiving 401 is expected.
+
+For future permission-registry activation, enter maintenance, gracefully drain old FPM requests, run the explicit-prior-key grant migration and verify existing administrators before reopening. Do not hold Core database locks across HTTP. Rollback retains grants/audit history; reactivation needs an administrator preflight rather than automatically rerunning grants.

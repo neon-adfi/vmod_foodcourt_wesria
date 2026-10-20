@@ -4,7 +4,7 @@
 
 **Date:** 2026-10-20, Asia/Kuala_Lumpur.
 
-**Status:** Grilling decisions resolved; all implementation phases remain not started.
+**Status:** Phase 1 implemented and verified locally on 2026-10-20. [Evidence](evidence/circularity-phase-1-2026-10-20.md). Phase 2 and later phases remain not started.
 
 **Inspected baseline:** `cfe3812`, `/Users/stev/htdoc/vmod_wesria`.
 
@@ -99,7 +99,7 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 
 | Phase | Independently testable deliverable | Status |
 | --- | --- | --- |
-| 1 | Environment, API boundary and frontend access foundation | Not started |
+| 1 | Environment, API boundary and frontend access foundation | Complete locally |
 | 2 | End-to-end measurement capture and correction | Not started |
 | 3 | Live totals and completed frontend views | Not started |
 | 4 | Integrated MVP qualification | Not started |
@@ -113,14 +113,14 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 
 **Produces:** Protected health endpoint, authenticated HTTP client, scope-validation middleware and registered frontend permission keys.
 
-- [ ] Recheck checkout, owned services, mounted source, PHP/MySQL identity and current FPM configuration. Bring the disposable test service online; do not recreate the development schema or change shared databases.
-- [ ] Add one separate FPM pool/listener inside `php-tech`, with Nginx routing the API prefix to that listener. Preserve the existing UI listener. Use internal `http://nginx-tech/api/circularity/v1` for the local client; do not assume the public local hostname loops back through Traefik from PHP.
-- [ ] Keep API routes outside CMS/session middleware and omit browser cookies. Reserve separate workers for API calls; do not add an application container or another MySQL service.
-- [ ] Add the native `vmod.core.extendPermissions` event to the existing registry; the UI connector contributes its two keys. Core never imports either circularity plugin. Use frontend grants, not October backend `registerPermissions()`.
-- [ ] Under a bounded maintenance window, apply the idempotent grant migration before serving requests with the expanded registry. Compare roles against an explicit pre-change permission list, not current `Permissions::all()` or `isFullAdministrator()`. Add keys only to roles already holding every preceding key; preserve other permissions and all branch grants. Lock the affected company and record the system grant change. Do not call the administration wrapper whose full-admin invariant is being repaired.
-- [ ] Configure private client credential, provider credential hash and stable source namespace outside Git. Add the real HTTP health call and validated request context without a generic client interface.
-- [ ] Prove provider-only boot without Core, ERP or the connector, using isolated plugin/cache/storage paths. Validate context denial, missing credentials and existing administrator operations.
-- [ ] Test Nginx/FPM routing and the synchronous HTTP path with constrained worker counts in a disposable runtime. Run an egolite smoke check of existing login/workspace/ERP navigation.
+- [x] Recheck checkout, owned services, mounted source, PHP/MySQL identity and current FPM configuration. Bring the disposable test service online; do not recreate the development schema or change shared databases.
+- [x] Add one separate FPM pool/listener inside `php-tech`, with Nginx routing the API prefix to that listener. Preserve the existing UI listener. Use internal `http://nginx-tech/api/circularity/v1` for the local client; do not assume the public local hostname loops back through Traefik from PHP.
+- [x] Keep API routes outside CMS/session middleware and omit browser cookies. Reserve separate workers for API calls; do not add an application container or another MySQL service.
+- [x] Add the native `vmod.core.extendPermissions` event to the existing registry; the UI connector contributes its two keys. Core never imports either circularity plugin. Use frontend grants, not October backend `registerPermissions()`.
+- [x] Under a bounded maintenance window, apply the idempotent grant migration before serving requests with the expanded registry. Compare roles against an explicit pre-change permission list, not current `Permissions::all()` or `isFullAdministrator()`. Add keys only to roles already holding every preceding key; preserve other permissions and all branch grants. Lock the affected company and record the system grant change. Do not call the administration wrapper whose full-admin invariant is being repaired.
+- [x] Configure private client credential, provider credential hash and stable source namespace outside Git. Add the real HTTP health call and validated request context without a generic client interface.
+- [x] Prove provider-only boot without Core, ERP or the connector, using isolated plugin/cache/storage paths. Validate context denial, missing credentials and existing administrator operations.
+- [x] Test Nginx/FPM routing and the synchronous HTTP path with constrained worker counts in a disposable runtime. Run an egolite smoke check of existing login/workspace/ERP navigation.
 
 **Gate:** Actual HTTP succeeds through the separate API listener; missing/invalid credentials fail; the provider boots independently; administrator/delegation behavior and existing UI remain usable. No measurement feature is claimed yet.
 
