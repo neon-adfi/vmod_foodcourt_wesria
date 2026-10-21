@@ -28,6 +28,9 @@ function check($condition, string $message): void
 
 function operation(array $job)
 {
+    if ($job['operation'] === 'remove') {
+        return (new \Vmod\Circularity\Classes\EntryService)->remove($job['context'], $job['uuid'], $job['input']);
+    }
     if ($job['operation'] === 'area') {
         $request = \Illuminate\Http\Request::create('/', 'PATCH', $job['input']);
         $request->attributes->set('circularity.context', $job['context']);
@@ -124,6 +127,44 @@ function measurement($area, array $extra = []): array
         'mode' => 'daily_total', 'quantity' => '1', 'destination' => 'landfill'], $extra);
 }
 
+function reconcile(array $context, $area, array $expected, ?string $quantity): void
+{
+    $rows = \Vmod\Circularity\Models\Entry::withTrashed()->forContext($context)->where('area_id', $area->id)->get();
+    $actual = [];
+    foreach ($rows as $row) {
+        $actual[$row->uuid] = [$row->version, $row->quantity, $row->mode, (bool) $row->deleted_at, $row->destination];
+        check($row->branch_ref === 'court' && $row->getRawOriginal('measurement_date') === '2026-01-01'
+            && $row->measurement_type === 'mixed_waste', 'Entry group changed unexpectedly.');
+    }
+    ksort($actual);
+    ksort($expected);
+    check($rows->count() === count($expected), 'Physical entry count does not reconcile.');
+    check($actual === $expected, 'Persisted identity/version/value mismatch in area ' . $area->name);
+    $request = \Illuminate\Http\Request::create('/', 'GET', ['area_id' => $area->id,
+        'date_from' => '2026-01-01', 'date_to' => '2026-01-01']);
+    $request->attributes->set('circularity.context', $context);
+    $summary = (new \Vmod\Circularity\Classes\CaptureApi)->summary($request)->getData(true)['totals'];
+    $active = count(array_filter($expected, fn ($row) => !$row[3]));
+    check(
+        $summary['mixed_waste']['quantity'] === $quantity && $summary['mixed_waste']['entry_count'] === $active,
+        'Filtered summary does not reconcile in area ' . $area->name
+    );
+    // Each scenario intentionally has one destination per area; cross-destination arithmetic is covered by provider tests.
+    $destinations = array_values(array_unique(array_map(fn ($row) => $row[4], array_filter($expected, fn ($row) => !$row[3]))));
+    $breakdown = $active ? [['destination' => $destinations[0], 'quantity' => $quantity, 'entry_count' => $active]] : [];
+    check($summary['mixed_waste']['destinations'] === $breakdown, 'Destination values do not reconcile.');
+    foreach (['landfill', 'composting'] as $destination) {
+        $request->query->set('destination', $destination);
+        $filtered = (new \Vmod\Circularity\Classes\CaptureApi)->summary($request)->getData(true)['totals']['mixed_waste'];
+        $matches = in_array($destination, $destinations, true);
+        check($filtered['quantity'] === ($matches ? $quantity : null)
+            && $filtered['entry_count'] === ($matches ? $active : 0), 'Destination-filtered summary mismatch.');
+    }
+    foreach (array_diff(array_keys($summary), ['mixed_waste']) as $type) {
+        check($summary[$type]['quantity'] === null && $summary[$type]['entry_count'] === 0, 'Mixed waste leaked into another metric.');
+    }
+}
+
 try {
     $password = stream_get_contents(STDIN);
     check($password !== '', 'Provide the owned observer credential privately on stdin.');
@@ -132,7 +173,7 @@ try {
     check($kernel->call('october:migrate', ['--no-interaction' => true]) === 0, 'Migration failed.');
     $context = ['source_namespace' => 'race', 'tenant_ref' => bin2hex(random_bytes(8)), 'branch_refs' => ['court'], 'actor_ref' => 'test-user'];
     $areas = [];
-    foreach (['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as $name) {
+    foreach (range('A', 'Q') as $name) {
         $area = new \Vmod\Circularity\Models\Area;
         $area->source_namespace = $context['source_namespace'];
         $area->tenant_ref = $context['tenant_ref'];
@@ -141,7 +182,7 @@ try {
         $area->save();
         $areas[] = $area;
     }
-    [$a, $b, $c, $d, $e, $f, $g, $h] = $areas;
+    [$a, $b, $c, $d, $e, $f, $g, $h, $i, $j, $k, $l, $m, $n, $o, $p, $q] = $areas;
     $service = new \Vmod\Circularity\Classes\EntryService;
     $job = ['context' => $context, 'operation' => 'entry'];
     $first = measurement($a);
@@ -154,15 +195,18 @@ try {
         409,
         [$a->id]
     );
+    reconcile($context, $a, [$first['uuid'] => [1, '1.000', 'daily_total', false, 'landfill']], '1.000');
+    $mode = measurement($b);
     forceWait(
         $observer,
         'competing modes',
         'vmod_circularity_areas',
-        fn () => $service->save($context, measurement($b)),
+        fn () => $service->save($context, $mode),
         $job + ['input' => measurement($b, ['mode' => 'individual', 'destination' => 'composting'])],
         409,
         [$b->id]
     );
+    reconcile($context, $b, [$mode['uuid'] => [1, '1.000', 'daily_total', false, 'landfill']], '1.000');
     $collision = measurement($c);
     forceWait(
         $observer,
@@ -173,6 +217,8 @@ try {
         409,
         [$d->id, $c->id, $d->id]
     );
+    reconcile($context, $c, [$collision['uuid'] => [1, '1.000', 'daily_total', false, 'landfill']], '1.000');
+    reconcile($context, $d, [], null);
     $replay = measurement($d);
     forceWait(
         $observer,
@@ -183,6 +229,7 @@ try {
         200,
         [$d->id, $d->id]
     );
+    reconcile($context, $d, [$replay['uuid'] => [1, '1.000', 'daily_total', false, 'landfill']], '1.000');
     $left = $service->save($context, measurement($e, ['mode' => 'individual']));
     $right = $service->save($context, measurement($f, ['mode' => 'individual']));
     forceWait(
@@ -195,6 +242,8 @@ try {
         [$e->id, $f->id]
     );
     check($left->fresh()->area_id === $f->id && $right->fresh()->area_id === $e->id, 'Moves did not preserve both entries.');
+    reconcile($context, $e, [$right->uuid => [2, '1.000', 'individual', false, 'landfill']], '1.000');
+    reconcile($context, $f, [$left->uuid => [2, '1.000', 'individual', false, 'landfill']], '1.000');
     forceWait(
         $observer,
         'deactivation before creation',
@@ -204,11 +253,13 @@ try {
         422,
         [$g->id]
     );
+    reconcile($context, $g, [], null);
+    $beforeDeactivation = measurement($h);
     forceWait(
         $observer,
         'creation before deactivation',
         'vmod_circularity_areas',
-        fn () => $service->save($context, measurement($h)),
+        fn () => $service->save($context, $beforeDeactivation),
         ['context' => $context, 'operation' => 'area', 'id' => $h->id, 'input' => ['version' => 1, 'is_active' => false]],
         200,
         [$h->id]
@@ -216,7 +267,112 @@ try {
     check(\Vmod\Circularity\Models\Entry::forContext($context)->where('area_id', $h->id)->count() === 1 && !$h->fresh()->is_active, 'Deactivation lost captured history.');
     check(\Vmod\Circularity\Models\Entry::forContext($context)->where('area_id', $g->id)->count() === 0, 'Inactive area accepted creation.');
     check(\Vmod\Circularity\Models\Entry::where('uuid', $collision['uuid'])->count() === 1, 'UUID collision created duplicates.');
-    echo "PASS: persisted modes, UUID identities, area moves and inactive history reconciled.\n";
+    reconcile($context, $h, [$beforeDeactivation['uuid'] => [1, '1.000', 'daily_total', false, 'landfill']], '1.000');
+    check($g->fresh()->version === 2 && $h->fresh()->version === 2, 'Area versions did not advance once.');
+
+    $individual = measurement($i, ['mode' => 'individual']);
+    forceWait(
+        $observer,
+        'individual first rejects daily',
+        'vmod_circularity_areas',
+        fn () => $service->save($context, $individual),
+        $job + ['input' => measurement($i)],
+        409,
+        [$i->id]
+    );
+    reconcile($context, $i, [$individual['uuid'] => [1, '1.000', 'individual', false, 'landfill']], '1.000');
+
+    $one = measurement($j, ['mode' => 'individual', 'quantity' => '1.125']);
+    $two = measurement($j, ['mode' => 'individual', 'quantity' => '2.000']);
+    forceWait(
+        $observer,
+        'independent individual readings',
+        'vmod_circularity_areas',
+        fn () => $service->save($context, $one),
+        $job + ['input' => $two],
+        200,
+        [$j->id]
+    );
+    reconcile($context, $j, [$one['uuid'] => [1, '1.125', 'individual', false, 'landfill'],
+        $two['uuid'] => [1, '2.000', 'individual', false, 'landfill']], '3.125');
+
+    $edited = $service->save($context, measurement($k));
+    forceWait(
+        $observer,
+        'edit rejects stale edit',
+        'vmod_circularity_areas',
+        fn () => $service->save($context, ['version' => 1, 'quantity' => '2.125'], $edited->uuid),
+        $job + ['uuid' => $edited->uuid, 'input' => ['version' => 1, 'quantity' => '9']],
+        409,
+        [$k->id]
+    );
+    reconcile($context, $k, [$edited->uuid => [2, '2.125', 'daily_total', false, 'landfill']], '2.125');
+
+    $kept = $service->save($context, measurement($l));
+    forceWait(
+        $observer,
+        'edit rejects stale removal',
+        'vmod_circularity_areas',
+        fn () => $service->save($context, ['version' => 1, 'quantity' => '2.125'], $kept->uuid),
+        ['context' => $context, 'operation' => 'remove', 'uuid' => $kept->uuid, 'input' => ['version' => 1]],
+        409,
+        [$l->id]
+    );
+    reconcile($context, $l, [$kept->uuid => [2, '2.125', 'daily_total', false, 'landfill']], '2.125');
+
+    $removed = $service->save($context, measurement($m));
+    forceWait(
+        $observer,
+        'removal rejects stale edit',
+        'vmod_circularity_areas',
+        fn () => $service->remove($context, $removed->uuid, ['version' => 1]),
+        $job + ['uuid' => $removed->uuid, 'input' => ['version' => 1, 'quantity' => '9']],
+        409,
+        [$m->id]
+    );
+    reconcile($context, $m, [$removed->uuid => [2, '1.000', 'daily_total', true, 'landfill']], null);
+
+    $original = measurement($n);
+    $service->save($context, $original);
+    forceWait(
+        $observer,
+        'removal rejects original UUID replay',
+        'vmod_circularity_areas',
+        fn () => $service->remove($context, $original['uuid'], ['version' => 1]),
+        $job + ['input' => $original],
+        409,
+        [$n->id]
+    );
+    reconcile($context, $n, [$original['uuid'] => [2, '1.000', 'daily_total', true, 'landfill']], null);
+
+    $last = $service->save($context, measurement($o));
+    $fresh = measurement($o, ['mode' => 'individual', 'quantity' => '3.125']);
+    forceWait(
+        $observer,
+        'last removal permits a new mode',
+        'vmod_circularity_areas',
+        fn () => $service->remove($context, $last->uuid, ['version' => 1]),
+        $job + ['input' => $fresh],
+        200,
+        [$o->id]
+    );
+    reconcile($context, $o, [$last->uuid => [2, '1.000', 'daily_total', true, 'landfill'],
+        $fresh['uuid'] => [1, '3.125', 'individual', false, 'landfill']], '3.125');
+
+    $source = $service->save($context, measurement($p, ['mode' => 'individual', 'quantity' => '1.125']));
+    $blocker = measurement($q, ['quantity' => '2.000', 'destination' => 'composting']);
+    forceWait(
+        $observer,
+        'target conflict rejects move atomically',
+        'vmod_circularity_areas',
+        fn () => $service->save($context, $blocker),
+        $job + ['uuid' => $source->uuid, 'input' => ['version' => 1, 'area_id' => $q->id]],
+        409,
+        [$p->id, $q->id]
+    );
+    reconcile($context, $p, [$source->uuid => [1, '1.125', 'individual', false, 'landfill']], '1.125');
+    reconcile($context, $q, [$blocker['uuid'] => [1, '2.000', 'daily_total', false, 'composting']], '2.000');
+    echo "PASS: 15 observed races; physical/active identities, versions, modes, quantities and summaries reconciled.\n";
 } catch (Throwable $exception) {
     fwrite(STDERR, get_class($exception) . ': ' . $exception->getMessage() . "\n");
     exit(1);

@@ -13,6 +13,10 @@ if (getenv('PLUGINS_PATH') === '/proof/plugins') {
     $loader->withDirectories('../../../proof/plugins');
 }
 $app = require dirname(__DIR__, 2) . '/bootstrap/app.php';
+if (getenv('VMOD_BROWSER_PROOF') === 'true') {
+    // Laravel resolves file cache/session paths before October applies its storage override.
+    $app->useStoragePath(getenv('STORAGE_PATH'));
+}
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 $connection = config('database.connections.' . config('database.default'));
 $connection['environment'] = $app->environment();
@@ -22,6 +26,25 @@ $connection['config_cache'] = $app->getCachedConfigPath();
 $plugins = \System\Classes\PluginManager::instance();
 $plugins->registerAll(true);
 $plugins->bootAll(true);
+
+function proofReceipt(array $request, string $stage, array $extra = []): void
+{
+    file_put_contents('/proof/receipts.jsonl', json_encode($request + ['stage' => $stage, 'time' => microtime(true)] + $extra) . "\n", FILE_APPEND | LOCK_EX);
+}
+
+function proofHold(array $receipt, array $barrier): void
+{
+    proofReceipt($receipt, 'held', ['barrier' => $barrier['id'], 'mode' => $barrier['mode']]);
+    $deadline = microtime(true) + 35;
+    do {
+        clearstatcache();
+        if (is_file('/proof/barriers/' . $barrier['id'] . '.release')) {
+            return;
+        }
+        usleep(20000);
+    } while (microtime(true) < $deadline);
+    throw new RuntimeException('Test barrier was not released within 35 seconds.');
+}
 
 if (PHP_SAPI === 'fpm-fcgi') {
     $request = \Illuminate\Http\Request::capture();
@@ -41,10 +64,50 @@ if (PHP_SAPI === 'fpm-fcgi') {
         \Vmod\Circularity\Classes\ApiAccess::requireBranch($request, $branch);
         return response()->json(['scope' => $request->attributes->get('circularity.context')]);
     })->middleware(\Vmod\Circularity\Classes\ApiAccess::class . ':read');
+    $receipt = $barrier = null;
+    // Test front controller only: exact fixture tenant and request, never production middleware.
+    if (getenv('VMOD_BROWSER_PROOF') === 'true' && getenv('PLUGINS_PATH') === '/proof/plugins'
+        && is_file('/proof/scope.json')) {
+        $scope = json_decode(file_get_contents('/proof/scope.json'), true, 512, JSON_THROW_ON_ERROR);
+        $context = json_decode($request->header('X-Circularity-Context', '{}'), true);
+        if (in_array($context['tenant_ref'] ?? null, $scope['tenants'], true)) {
+            ignore_user_abort(true);
+            $uuid = $request->input('uuid') ?? (preg_match('#/entries/([a-f0-9-]+)$#', $request->path(), $match) ? $match[1] : null);
+            $receipt = ['request' => bin2hex(random_bytes(8)), 'method' => $request->method(),
+                'path' => $request->path(), 'uuid' => $uuid];
+            proofReceipt($receipt, 'received');
+            if (is_file('/proof/barriers/armed.json')) {
+                $candidate = json_decode(file_get_contents('/proof/barriers/armed.json'), true, 512, JSON_THROW_ON_ERROR);
+                if ($candidate['method'] === $receipt['method'] && $candidate['path'] === $receipt['path']
+                    && $candidate['uuid'] === $uuid && preg_match('/\A[a-f0-9]{32}\z/', $candidate['id'])) {
+                    rename('/proof/barriers/armed.json', '/proof/barriers/' . $candidate['id'] . '.claimed');
+                    $barrier = $candidate;
+                }
+            }
+            if ($barrier && in_array($barrier['mode'], ['before_dispatch', 'revocation'], true)) {
+                proofHold($receipt, $barrier);
+            }
+            if ($barrier && in_array($barrier['mode'], ['before_dispatch', 'unavailable'], true)) {
+                response()->json(['message' => 'Guarded proof unavailable.'], 503)->send();
+                proofReceipt($receipt, 'drained', ['dispatched' => false]);
+                return;
+            }
+            proofReceipt($receipt, 'dispatched');
+        }
+    }
     $kernel = $app->make(\Illuminate\Contracts\Http\Kernel::class);
     $response = $kernel->handle($request);
+    if ($receipt) {
+        proofReceipt($receipt, 'completed', ['status' => $response->getStatusCode()]);
+        if (($barrier['mode'] ?? null) === 'after_commit') {
+            proofHold($receipt, $barrier);
+        }
+    }
     $response->send();
     $kernel->terminate($request, $response);
+    if ($receipt) {
+        proofReceipt($receipt, 'drained', ['dispatched' => true]);
+    }
     return;
 }
 
@@ -55,15 +118,108 @@ function checkCircularity($condition, string $message): void
     }
 }
 
+function browserFixture($http, string $api): array
+{
+    $bootstrap = new \Vmod\Core\Services\BootstrapService;
+    $bootstrap->assertOwnedEnvironment();
+    $fixture = ['nonce' => bin2hex(random_bytes(6)), 'password' => bin2hex(random_bytes(20)) . '7!',
+        'base_url' => config('app.url'), 'proof_dir' => getenv('VMOD_PROOF_HOST_DIR'),
+        'runtime' => ['php' => PHP_VERSION, 'mysql' => \DB::selectOne('select version() as version')->version,
+            'database' => \DB::connection()->getDatabaseName(), 'host' => config('database.connections.mysql.host'),
+            'session' => config('session.driver'), 'cache' => config('cache.default')]];
+    foreach (['a', 'b'] as $key) {
+        $created = $bootstrap->create([
+            'company_code' => 'circularity4-' . $key . '-' . $fixture['nonce'],
+            'company_name' => 'Circularity qualification ' . strtoupper($key), 'branch_name' => 'Main court',
+            'first_name' => 'Qualification ' . strtoupper($key),
+            'email' => 'circularity4-' . $key . '-' . $fixture['nonce'] . '@example.invalid',
+            'password' => $fixture['password'], 'password_confirmation' => $fixture['password'],
+        ]);
+        $fixture[$key] = ['email' => $created['owner']->email, 'user_id' => $created['owner']->id,
+            'company_id' => $created['company']->id, 'branch_id' => $created['branch']->id,
+            'member_id' => $created['membership']->id];
+    }
+    $other = \Vmod\Core\Models\Branch::create(['company_id' => $fixture['a']['company_id'], 'name' => 'Second court']);
+    \Vmod\Core\Models\Membership::findOrFail($fixture['a']['member_id'])->branches()->attach($other->id);
+    $role = \Vmod\Core\Models\Role::create(['company_id' => $fixture['a']['company_id'], 'name' => 'Qualification staff',
+        'permissions' => ['circularity.read', 'circularity.write']]);
+    $staff = \Vmod\Core\Models\Membership::create(['company_id' => $fixture['a']['company_id'],
+        'user_id' => $fixture['b']['user_id'], 'role_id' => $role->id]);
+    $staff->branches()->sync([$fixture['a']['branch_id'], $other->id]);
+    $fixture += ['staff_role_id' => $role->id, 'staff_member_id' => $staff->id, 'other_branch_id' => $other->id];
+    \System\Models\SiteDefinition::syncPrimarySite();
+    $site = \System\Models\SiteDefinition::where('is_primary', true)->firstOrFail();
+    $site->theme = 'vmod';
+    $site->is_enabled = $site->is_enabled_edit = true;
+    $site->is_custom_url = true;
+    $site->app_url = $fixture['base_url'];
+    $site->save();
+    $context = ['tenant_ref' => (string) $fixture['a']['company_id'],
+        'branch_refs' => array_map('strval', [$fixture['a']['branch_id'], $other->id]),
+        'actor_ref' => (string) $fixture['a']['user_id'], 'permissions' => ['circularity.read', 'circularity.write']];
+    $http->replaceHeaders(['X-Circularity-Context' => json_encode($context)]);
+    $fixture['today'] = $http->get($api . '/options')->json('today');
+    foreach (['main' => $fixture['a']['branch_id'], 'other' => $other->id] as $key => $branch) {
+        $response = $http->post($api . '/areas', ['branch_ref' => (string) $branch,
+            'name' => ucfirst($key) . ' shared kitchen', 'kind' => 'shared_area']);
+        checkCircularity($response->status() === 201, 'Browser area seed failed.');
+        $fixture['areas'][$key] = $response->json('area.id');
+    }
+    foreach ([
+        'food' => ['food_waste', '10.125', 'composting'], 'unknown' => ['food_waste', '2.000', 'unknown'],
+        'mixed' => ['mixed_waste', '3.250', 'unknown'], 'packaging' => ['packaging_waste', '0', 'recycling'],
+        'issued' => ['reusable_issued', '8', 'not_applicable'], 'returned' => ['reusable_returned', '12', 'not_applicable'],
+        'other' => ['food_waste', '100', 'unknown'],
+    ] as $key => [$type, $quantity, $destination]) {
+        $response = $http->post($api . '/entries', ['uuid' => (string) \Illuminate\Support\Str::uuid(),
+            'branch_ref' => (string) ($key === 'other' ? $other->id : $fixture['a']['branch_id']),
+            'area_id' => $fixture['areas'][$key === 'other' ? 'other' : 'main'], 'measurement_date' => $fixture['today'],
+            'measurement_type' => $type, 'mode' => 'daily_total', 'quantity' => $quantity, 'destination' => $destination]);
+        checkCircularity($response->status() === 201, 'Browser measurement seed failed.');
+        $fixture['entries'][$key] = $response->json('entry.uuid');
+    }
+    file_put_contents('/proof/scope.json', json_encode(['tenants' => array_map(fn ($key) => (string) $fixture[$key]['company_id'], ['a', 'b'])]));
+    file_put_contents('/proof/fixture.json', json_encode($fixture, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR));
+    chmod('/proof/fixture.json', 0600);
+    return $fixture;
+}
+
+function browserControl(array $fixture, array $command): array
+{
+    // This CLI connection commits independently of the held provider request. Only synthetic IDs are addressable.
+    \DB::transaction(function () use ($fixture, $command) {
+        if ($command['action'] === 'permissions') {
+            $permissions = ['full' => ['circularity.read', 'circularity.write'], 'read' => ['circularity.read'], 'none' => []];
+            checkCircularity(isset($permissions[$command['value']]), 'Invalid proof permissions.');
+            $role = \Vmod\Core\Models\Role::where('company_id', $fixture['a']['company_id'])->findOrFail($fixture['staff_role_id']);
+            $role->permissions = $permissions[$command['value']];
+            $role->save();
+        } elseif ($command['action'] === 'branches') {
+            $branches = ['all' => [$fixture['a']['branch_id'], $fixture['other_branch_id']], 'first' => [$fixture['a']['branch_id']]];
+            checkCircularity(isset($branches[$command['value']]), 'Invalid proof branches.');
+            \Vmod\Core\Models\Membership::where('company_id', $fixture['a']['company_id'])
+                ->findOrFail($fixture['staff_member_id'])->branches()->sync($branches[$command['value']]);
+        } else {
+            checkCircularity($command['action'] === 'snapshot', 'Unknown proof control.');
+        }
+    });
+    checkCircularity(\Vmod\Core\Models\Membership::findOrFail($fixture['a']['member_id'])->isFullAdministrator(), 'Proof must preserve its administrator.');
+    return ['entries' => \Vmod\Circularity\Models\Entry::withTrashed()->where('source_namespace', 'wesria-proof')
+        ->whereIn('tenant_ref', array_map(fn ($key) => (string) $fixture[$key]['company_id'], ['a', 'b']))
+        ->get(['uuid', 'tenant_ref', 'branch_ref', 'area_id', 'measurement_date', 'measurement_type', 'mode', 'quantity', 'destination', 'version', 'deleted_at'])->toArray()];
+}
+
 checkCircularity($app->make(\Illuminate\Contracts\Console\Kernel::class)->call('october:migrate', ['--no-interaction' => true]) === 0, 'Test migrations failed.');
 // Let October create its full cache/storage tree inside the API worker's writable parent.
-foreach (['ui-storage', 'ui-cache', 'api', 'plugins', 'plugins/vmod'] as $directory) {
+foreach (['ui-storage', 'ui-cache', 'api', 'plugins', 'plugins/vmod', 'barriers', 'controls'] as $directory) {
     $path = '/proof/' . $directory;
     if (!is_dir($path)) {
         mkdir($path, 0777, true);
     }
     chmod($path, 0777);
 }
+file_put_contents('/proof/receipts.jsonl', '');
+chmod('/proof/receipts.jsonl', 0666);
 foreach (['ui-storage', 'ui-cache'] as $directory) {
     foreach (new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator('/proof/' . $directory, FilesystemIterator::SKIP_DOTS),
@@ -196,6 +352,25 @@ try {
     checkCircularity($http->get($api . '/summary', $range)->status() === 404, 'HTTP summary area leaked across tenants.');
     echo "PASS: provider-only summary, exact totals, uniform destination filters, range validation and next-read removal.\n";
     echo "PASS: provider-only HTTP options, area CRUD, measurement CRUD, exact zero, replay, stale writes and removed-record isolation.\n";
+    if (getenv('VMOD_BROWSER_PROOF') === 'true') {
+        $fixture = browserFixture($http, $api);
+        file_put_contents('/proof/ready', 'ready');
+        echo "READY: native browser origin " . $fixture['base_url'] . "; private fixture in proof directory.\n";
+        $deadline = microtime(true) + 7200;
+        while (!is_file('/proof/complete')) {
+            checkCircularity(microtime(true) < $deadline, 'Browser qualification did not finish within two hours.');
+            foreach (glob('/proof/controls/*.request.json') as $path) {
+                $command = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+                $result = browserControl($fixture, $command);
+                file_put_contents(str_replace('.request.json', '.response.json', $path), json_encode($result, JSON_THROW_ON_ERROR));
+                unlink($path);
+            }
+            clearstatcache();
+            usleep(50000);
+        }
+        checkCircularity(trim(file_get_contents('/proof/complete')) === 'pass', 'Browser qualification failed.');
+        echo "PASS: browser qualification completed.\n";
+    }
 } finally {
     proc_terminate($process, 3); // Native SIGQUIT: drain the test workers.
     proc_close($process);

@@ -4,7 +4,7 @@
 
 **Date:** 2026-10-20, Asia/Kuala_Lumpur.
 
-**Status:** Phases 1–3 complete locally. See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md) and [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md). Phase 3 started from clean `main` at `2fe3953`; Git commit, merge and push were separately authorized after acceptance. Phase 4 and later remain not started.
+**Status:** Phases 1–4 complete locally. See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md), [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md) and [Phase 4 evidence](evidence/circularity-phase-4-2026-10-21.md). Phase 3 started from clean `main` at `2fe3953`; Git commit, merge and push were separately authorized after acceptance. Phase 4 qualified baseline `1937e16` on 2026-10-22; its changes remain uncommitted. Phase 5 remains not started.
 
 **Inspected baseline:** `cfe3812`, `/Users/stev/htdoc/vmod_wesria`.
 
@@ -106,7 +106,7 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 | 1 | Environment, API boundary and frontend access foundation | Complete locally |
 | 2 | End-to-end measurement capture and correction | Complete locally |
 | 3 | Live totals and completed frontend views | Complete locally |
-| 4 | Integrated MVP qualification | Not started |
+| 4 | Integrated MVP qualification | Complete locally |
 | 5 | Independent-hosting rehearsal | Not started |
 
 ### Phase 1 — Environment and API/access foundation
@@ -165,18 +165,22 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 
 ### Phase 4 — Integrated MVP qualification
 
+**Current gate:** Accepted locally on 2026-10-22. Focused tests, 15 observed MySQL races, standalone/native-browser HTTP, actual cached Back/Forward navigation, real timeout/revocation recovery, screenshot inspection, scoped checks and aggregate regression pass. See [exact results and limitations](evidence/circularity-phase-4-2026-10-21.md).
+
+**Confirmed history behavior:** Every persisted history return to `/circularity` or its children reloads through server authorization before revealing content. Discard unsaved edits; current permissions determine editable, read-only or denied access. Other applications retain their existing history handling.
+
 **Files/responsibility:** Focused existing tests plus one small synchronized circularity concurrency check, browser runner and phase evidence.
 
 **Consumes:** Completed capture and overview.
 
 **Produces:** A qualified local MVP, with limitations recorded separately from deployment readiness.
 
-- [ ] Run focused provider/connector tests, then actual HTTP integration, then affected Core/ERP checks and the existing aggregate test command.
-- [ ] Force and observe MySQL races for concurrent first modes, daily duplicates, independent individual readings, repeated UUIDs, stale edits/removals and opposite-direction area moves.
-- [ ] Verify removed rows never reappear from a replay; deleting all active group rows permits a new mode; a rejected move leaves both groups unchanged.
-- [ ] Exercise actual timeout/uncertain-save recovery without automatic write retries. Prove authorization is checked at dispatch and later revoked requests are denied; do not claim an in-flight request was cancelled.
-- [ ] Complete egolite journeys for capture, correction, mixed waste, mode conflict, summary reconciliation, workspace switching, read-only users, mobile and keyboard use.
-- [ ] Inspect screenshots, run scoped PHP/JS/whitespace checks and record exact runtime, schema, commands, outcomes and unresolved limitations.
+- [x] Run focused provider/connector tests, then actual HTTP integration, then affected Core/ERP checks and the existing aggregate test command.
+- [x] Force and observe MySQL races for concurrent first modes, daily duplicates, independent individual readings, repeated UUIDs, stale edits/removals and opposite-direction area moves.
+- [x] Verify removed rows never reappear from a replay; deleting all active group rows permits a new mode; a rejected move leaves both groups unchanged.
+- [x] Exercise actual timeout/uncertain-save recovery without automatic write retries. Prove authorization is checked at dispatch and later revoked requests are denied; do not claim an in-flight request was cancelled.
+- [x] Complete egolite journeys for capture, correction, mixed waste, mode conflict, summary reconciliation, workspace switching, read-only users, mobile and keyboard use.
+- [x] Inspect screenshots, run scoped PHP/JS/whitespace checks and record exact runtime, schema, commands, outcomes and unresolved limitations.
 
 **Gate:** All required checks pass or the phase stays incomplete. **The operational MVP ends here.** No commit, push, deployment or following phase is implied.
 
@@ -229,5 +233,7 @@ Keep one progress table above and append a compact evidence entry after each exe
 **2026-10-20 — Planning/grilling only:** Product questions resolved for dual input modes, mode-switch boundaries, mixed waste and removal. Technical review resolved plugin ownership, HTTP worker isolation, permission rollout, authorization timing and lean write protection. This file is the only planning deliverable; no application code, schema, runtime, tests or deployment was changed or executed by writing it.
 
 **2026-10-21 — Phase 3 accepted locally:** Exact live summaries, native overview and range-filtered lists complete. Focused tests: 29/789 assertions; aggregate Vmod: 100/1,767 assertions; framework: 425 tests with four existing skips. Real HTTP and eight browser scenario groups pass; twelve screenshots inspected. [Evidence, manifest, commands and simulation limits](evidence/circularity-phase-3-2026-10-21.md). No schema or writer changes. Phase 4, commit, push and deployment remain outside this execution.
+
+**2026-10-22 — Phase 4 accepted locally:** Docker recovered and all required qualification ran serially on PHP 8.2.34 / MySQL 8.0.46. Focused: 29 tests / 789 assertions; 15 observed Circularity races; standalone and browser HTTP pass. One egolite TaskSpace passed seven groups, five actual cached history returns, real committed/absent timeouts and revocation; 19 screenshots inspected, zero JavaScript exceptions. Core: 16/89; aggregate Vmod: 100/1,767 plus five Core concurrency scenarios; framework: 425/2,287 with four existing SQLite skips. Scoped checks and independent review pass. [Evidence, receipts, manifest and limits](evidence/circularity-phase-4-2026-10-21.md). Temporary runtime closed; changes delivered uncommitted. No push, deployment or Phase 5 work.
 
 Later score methodology, performance rates, evidence uploads, partner self-service and external integrations need separate specifications. Do not implement weights, denominators, accounting effects or environmental claims from assumptions.

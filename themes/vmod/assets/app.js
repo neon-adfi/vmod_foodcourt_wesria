@@ -53,6 +53,10 @@ async function restoreProtectedHistory() {
     }
 }
 window.addEventListener('pageshow', event => {
+    if (event.persisted && (location.pathname === '/circularity' || location.pathname.startsWith('/circularity/'))) {
+        location.reload();
+        return;
+    }
     if (event.persisted && historyContext) restoreProtectedHistory();
 });
 
