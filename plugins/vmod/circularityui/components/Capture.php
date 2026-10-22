@@ -51,6 +51,9 @@ class Capture extends \Cms\Classes\ComponentBase
             return;
         }
         $filters = $validator->validated();
+        if (($filters['branch_ref'] ?? null) === '') {
+            unset($filters['branch_ref']);
+        }
         $branch = Workspace::branchId() !== null ? (string) Workspace::branchId() : ($filters['branch_ref'] ?? null);
         if (!empty($filters['new']) && empty($filters['uuid']) && $this->property('view') === 'entries') {
             return Redirect::to('/circularity/entries?' . http_build_query(array_filter([

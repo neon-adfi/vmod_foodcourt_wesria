@@ -514,6 +514,31 @@ class BridgeTest extends ApplicationTestCase
         return $page;
     }
 
+    public function testReportingAcceptsEmptyCourtWithoutBroadeningExplicitCourtScope(): void
+    {
+        $company = $this->company();
+        $other = Branch::create(['company_id' => $company['company']->id, 'name' => 'Court B']);
+        $company['membership']->branches()->attach($other->id);
+        $this->acting($company, false);
+        $page = $this->reportingPage(['report' => 'period', 'branch_ref' => '']);
+        $this->assertTrue(isset($page['comparison']));
+        Http::assertSent(function ($request) use ($company, $other) {
+            $context = json_decode($request->header('X-Circularity-Context')[0], true);
+            return str_ends_with($request->url(), '/summary')
+                && $context['branch_refs'] === [(string) $company['branch']->id, (string) $other->id];
+        });
+        foreach (['0', 'foreign-court'] as $branch) {
+            $this->denied(fn () => $this->reportingPage(['branch_ref' => $branch]), 404);
+        }
+        $this->acting($company);
+        $this->reportingPage(['branch_ref' => '']);
+        Http::assertSent(function ($request) use ($company) {
+            $context = json_decode($request->header('X-Circularity-Context')[0], true);
+            return str_ends_with($request->url(), '/summary')
+                && $context['branch_refs'] === [(string) $company['branch']->id];
+        });
+    }
+
     public function testReportingComparesInclusivePeriodsAndKeepsDrilldownsScoped(): void
     {
         $this->acting($this->company());
