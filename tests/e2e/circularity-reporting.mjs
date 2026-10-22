@@ -3,11 +3,11 @@ const assert = (await import('node:assert/strict')).default;
 const fs = await import('node:fs/promises');
 const { proof_dir: proof } = JSON.parse(await fs.readFile('/private/tmp/wesria-circularity-phase4-runtime.json', 'utf8'));
 const fixture = JSON.parse(await fs.readFile(proof + '/fixture.json', 'utf8'));
-const output = '/Users/stev/htdoc/vmod_wesria/output/ego-lite/circularity-reporting';
+const output = '/Users/stev/htdoc/vmod_wesria/output/ego-lite/circularity-phase8';
 const base = fixture.base_url;
 const sourceSha256 = {};
 const { createHash } = await import('node:crypto');
-for (const path of ['themes/vmod/layouts/default.htm', 'themes/vmod/pages/circularity-reporting.htm',
+for (const path of ['plugins/vmod/circularity/classes/EntryService.php', 'themes/vmod/pages/circularity-entries.htm', 'themes/vmod/layouts/default.htm', 'themes/vmod/pages/circularity-reporting.htm',
     'plugins/vmod/circularityui/components/Capture.php', 'plugins/vmod/circularityui/classes/CircularityClient.php',
     'plugins/vmod/circularity/classes/CaptureApi.php', 'tests/e2e/circularity-reporting.mjs', 'tests/vmod/check-circularity-http.php']) {
     sourceSha256[path] = createHash('sha256').update(await fs.readFile('/Users/stev/htdoc/vmod_wesria/' + path)).digest('hex');
@@ -16,7 +16,7 @@ assert.match(base, /^http:\/\/127\.0\.0\.1:\d+$/);
 assert.equal(fixture.runtime.host, 'mysql-test');
 assert.equal(fixture.runtime.database, 'vmod_wesria_test');
 await fs.mkdir(output, { recursive: true });
-const task = await taskSpace('Wesria circularity reporting acceptance');
+const task = await taskSpace('Wesria Circularity Phase 8 acceptance');
 const page = task.page('p1');
 let report = { spaceId: task.spaceId, origin: base, runtime: fixture.runtime, fixtureNonce: fixture.nonce, sourceSha256, started: new Date().toISOString(), scenarios: [], screenshots: [], history: [], runtimeErrors: [], passed: false };
 let old;
@@ -118,7 +118,7 @@ try {
         assert.equal(await page.evaluate(() => document.querySelector('nav[aria-label="Circularity sections"] [aria-current="page"]').textContent.trim()), 'Reporting');
         assert.equal(await page.evaluate(() => document.querySelector('#filter-from').value), fixture.today.slice(0, 8) + '01');
         await go('/circularity/reporting?' + scope);
-        for (const [type, expected] of Object.entries({ food_waste: '12.125', mixed_waste: '3.250', packaging_waste: '0.000', reusable_issued: '8', reusable_returned: '12' })) assert.equal(await periodValue(type), expected);
+        for (const [type, expected] of Object.entries({ food_waste: '12.125', used_cooking_oil: '12.125', mixed_waste: '3.250', packaging_waste: '0.000', reusable_issued: '8', reusable_returned: '12' })) assert.equal(await periodValue(type), expected);
         assert.equal(await periodValue('food_waste', 'previous'), 'No data');
         await shot('desktop-period-filters'); await showTable(); await shot('desktop-period');
         await page.click('[data-report-type="food_waste"] [data-period="current"] a');
@@ -176,6 +176,36 @@ try {
         assert.match(await page.evaluate(() => document.querySelector('tbody').textContent), /3\.250/);
         await passed('Grouped reports reconcile with scoped records, filters, refresh and reset');
     }
+    if (!done('Oil reconciles in Overview and all reports on desktop and mobile')) {
+        for (const [screen, viewport] of [['desktop', desktop], ['mobile', mobile]]) {
+            await page.cdp('Emulation.setDeviceMetricsOverride', viewport);
+            await go('/circularity?' + scope);
+            assert.match(await page.evaluate(() => document.querySelector('#summary-used_cooking_oil').closest('.card').textContent), /12\.125/);
+            await page.hover('#summary-used_cooking_oil'); await shot(screen + '-oil-overview');
+            await go('/circularity/reporting?' + scope);
+            for (const kind of ['period', 'area', 'daily', 'court']) {
+                await page.selectOption('#filter-court', ''); await switchReport(kind);
+                assert.equal(new URL(await page.url()).searchParams.get('branch_ref'), '');
+                const value = kind === 'period' ? await periodValue('used_cooking_oil')
+                    : await page.evaluate(() => document.querySelector('[data-report-total=used_cooking_oil]').textContent.trim());
+                assert.equal(value, '12.125');
+                await showTable(); await shot(screen + '-oil-' + kind);
+                await page.click(kind === 'period' ? '[data-report-type=used_cooking_oil] [data-period=current] a' : '[data-report-total=used_cooking_oil] a');
+                await page.waitForSelector('tbody');
+                assert.equal(await page.evaluate(() => document.querySelectorAll('tbody tr').length), 2);
+                const query = new URL(await page.url()).searchParams;
+                assert.equal(query.get('measurement_type'), 'used_cooking_oil'); assert.equal(query.has('report'), false);
+                await go('/circularity/reporting?' + scope + '&report=' + kind);
+            }
+            await go('/circularity/entries?new=1');
+            await page.selectOption('#capture-type', 'used_cooking_oil');
+            await page.focus('details summary'); await page.keyboard.press('Enter');
+            assert.equal(await page.evaluate(() => document.querySelector('details').open), true);
+            await page.hover('details'); await shot(screen + '-oil-guidance');
+        }
+        await page.cdp('Emulation.setDeviceMetricsOverride', desktop);
+        await passed('Oil reconciles in Overview and all reports on desktop and mobile');
+    }
     if (!done('UI create edit remove affect the next read; inactive history and unmatched rows stay explicit')) {
         if (!fixture.reporting_area) {
             await go('/circularity/areas?new=1'); await page.selectOption('#area-court', String(fixture.a.branch_id));
@@ -188,20 +218,27 @@ try {
         if (!fixture.reporting_entry) {
             await go('/circularity/entries?new=1'); fixture.reporting_entry = new URL(await page.url()).searchParams.get('uuid'); await persist();
         } else await go('/circularity/entries?new=1&uuid=' + fixture.reporting_entry);
-        await page.selectOption('#capture-court', String(fixture.a.branch_id)); await page.selectOption('#capture-type', 'mixed_waste');
+        await page.selectOption('#capture-court', String(fixture.a.branch_id)); await page.selectOption('#capture-type', 'used_cooking_oil');
+        await page.focus('details summary'); await page.keyboard.press('Enter');
+        assert.equal(await page.evaluate(() => document.querySelector('details').open), true);
+        assert.equal(await page.evaluate(() => document.querySelector('#capture-unit').textContent.trim()), 'kg');
+        await shot('desktop-oil-capture');
         await page.fill('#capture-date', fixture.today); await page.selectOption('#capture-destination', 'unknown');
         await page.selectOption('#capture-area', String(fixture.reporting_area)); await page.fill('#capture-quantity', '1.125'); await submit('#circularity-entry-form');
-        await go('/circularity/reporting?report=area&' + areaScope); assert.equal(await groupedValue(fixture.reporting_area, 'mixed_waste'), '1.125');
+        await go('/circularity/reporting?report=area&' + areaScope); assert.equal(await groupedValue(fixture.reporting_area, 'used_cooking_oil'), '1.125');
         await go('/circularity/entries?uuid=' + fixture.reporting_entry); await page.fill('#capture-quantity', '2.250'); await submit('#circularity-entry-form');
-        await go('/circularity/reporting?report=daily&' + areaScope); assert.equal(await groupedValue(fixture.today, 'mixed_waste'), '2.250');
+        await go('/circularity/reporting?report=daily&' + areaScope); assert.equal(await groupedValue(fixture.today, 'used_cooking_oil'), '2.250');
+        await go('/circularity/entries?uuid=' + fixture.reporting_entry); await page.fill('#capture-quantity', '0'); await submit('#circularity-entry-form');
+        await go('/circularity/reporting?' + areaScope); assert.equal(await periodValue('used_cooking_oil'), '0.000');
+        await go('/circularity/entries?uuid=' + fixture.reporting_entry); await page.fill('#capture-quantity', '2.250'); await submit('#circularity-entry-form');
         await go('/circularity/areas?id=' + fixture.reporting_area); await page.click('input[type=checkbox][name=is_active]'); await submit('#circularity-area-form');
-        await go('/circularity/reporting?report=area&' + areaScope); assert.equal(await groupedValue(fixture.reporting_area, 'mixed_waste'), '2.250');
+        await go('/circularity/reporting?report=area&' + areaScope); assert.equal(await groupedValue(fixture.reporting_area, 'used_cooking_oil'), '2.250');
         assert.match(await page.evaluate(() => document.querySelector('#grouped-report tbody th').textContent), /inactive/);
         await go('/circularity/entries?uuid=' + fixture.reporting_entry); await page.click('[data-request="circularityCapture::onRemoveEntry"]');
         await page.acceptDialog(); await page.waitForURL(base + '/circularity/entries');
         await go('/circularity/reporting?report=daily&' + areaScope);
         assert.equal(await page.evaluate(() => document.querySelectorAll('[data-report-key]').length), 0);
-        assert.equal(await page.evaluate(() => document.querySelector('[data-report-total=mixed_waste]').textContent.trim()), 'No data');
+        assert.equal(await page.evaluate(() => document.querySelector('[data-report-total=used_cooking_oil]').textContent.trim()), 'No data');
         await go('/circularity/areas?id=' + fixture.reporting_area); await page.click('input[type=checkbox][name=is_active]'); await submit('#circularity-area-form');
         await go('/circularity/reporting?report=area'); await showTable(); await shot('desktop-area');
         assert.match(await page.evaluate(key => document.querySelector(`[data-report-key="${key}"]`).textContent, fixture.reporting_area), /No matching records/);
@@ -215,14 +252,14 @@ try {
         const date = previousDate.toISOString().slice(0, 10);
         await go('/circularity/entries?new=1' + (fixture.previous_entry ? '&uuid=' + fixture.previous_entry : ''));
         fixture.previous_entry = new URL(await page.url()).searchParams.get('uuid'); await persist();
-        await page.selectOption('#capture-court', String(fixture.a.branch_id)); await page.selectOption('#capture-type', 'food_waste');
+        await page.selectOption('#capture-court', String(fixture.a.branch_id)); await page.selectOption('#capture-type', 'used_cooking_oil');
         await page.fill('#capture-date', date); await page.selectOption('#capture-destination', 'unknown');
         await page.selectOption('#capture-area', String(fixture.areas.main)); await page.fill('#capture-quantity', '2.750');
         await submit('#circularity-entry-form');
         await go('/circularity/reporting?' + scope);
-        assert.equal(await periodValue('food_waste'), '12.125'); assert.equal(await periodValue('food_waste', 'previous'), '2.750');
+        assert.equal(await periodValue('used_cooking_oil'), '12.125'); assert.equal(await periodValue('used_cooking_oil', 'previous'), '2.750');
         await showTable(); await shot('desktop-both-periods');
-        await page.click('[data-report-type=food_waste] [data-period=previous] a'); await page.waitForSelector('tbody');
+        await page.click('[data-report-type=used_cooking_oil] [data-period=previous] a'); await page.waitForSelector('tbody');
         const query = new URL(await page.url()).searchParams;
         assert.equal(query.get('date_from'), date); assert.equal(query.get('date_to'), date);
         assert.equal(query.get('area_id'), String(fixture.areas.main));

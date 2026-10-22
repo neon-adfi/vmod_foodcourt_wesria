@@ -15,6 +15,7 @@ class EntryService
         'food_waste' => ['label' => 'Food waste', 'unit' => 'kg'],
         'packaging_waste' => ['label' => 'Packaging waste', 'unit' => 'kg'],
         'mixed_waste' => ['label' => 'Mixed waste', 'unit' => 'kg'],
+        'used_cooking_oil' => ['label' => 'Used cooking oil', 'unit' => 'kg'],
         'reusable_issued' => ['label' => 'Reusable items issued', 'unit' => 'count'],
         'reusable_returned' => ['label' => 'Reusable items returned', 'unit' => 'count'],
     ];

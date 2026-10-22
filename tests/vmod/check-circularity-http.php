@@ -180,6 +180,7 @@ function browserFixture($http, string $api): array
     }
     foreach ([
         'food' => ['food_waste', '10.125', 'composting'], 'unknown' => ['food_waste', '2.000', 'unknown'],
+        'oil' => ['used_cooking_oil', '10.125', 'recycling'], 'oil_unknown' => ['used_cooking_oil', '2.000', 'unknown'],
         'mixed' => ['mixed_waste', '3.250', 'unknown'], 'packaging' => ['packaging_waste', '0', 'recycling'],
         'issued' => ['reusable_issued', '8', 'not_applicable'], 'returned' => ['reusable_returned', '12', 'not_applicable'],
         'other' => ['food_waste', '100', 'unknown'],
@@ -343,6 +344,7 @@ try {
     $range = ['date_from' => '2026-01-01', 'date_to' => '2026-01-01', 'area_id' => $area['id']];
     foreach ([
         ['food_waste', '10.125', 'composting'], ['food_waste', '2.000', 'unknown'],
+        ['used_cooking_oil', '10.125', 'recycling'], ['used_cooking_oil', '2.000', 'unknown'],
         ['reusable_issued', '8', 'not_applicable'], ['reusable_returned', '12', 'not_applicable'],
     ] as [$type, $quantity, $destination]) {
         checkCircularity($http->post($api . '/entries', array_replace($payload, [
@@ -352,6 +354,7 @@ try {
     }
     $summary = $http->get($api . '/summary', $range);
     checkCircularity($summary->status() === 200 && $summary->json('totals.food_waste.quantity') === '12.125'
+        && $summary->json('totals.used_cooking_oil.quantity') === '12.125'
         && $summary->json('totals.mixed_waste.quantity') === '2.125'
         && $summary->json('totals.packaging_waste.quantity') === null
         && $summary->json('totals.reusable_issued.quantity') === '8'

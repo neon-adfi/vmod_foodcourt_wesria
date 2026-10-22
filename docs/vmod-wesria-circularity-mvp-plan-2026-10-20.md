@@ -4,7 +4,7 @@
 
 **Date:** 2026-10-20, Asia/Kuala_Lumpur.
 
-**Status:** Phases 1–7 complete locally; Phases 6–7 accepted on 2026-10-22, with [reporting acceptance evidence](evidence/circularity-reporting-2026-10-22.md). See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md), [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md), [Phase 4 evidence](evidence/circularity-phase-4-2026-10-21.md) and [Phase 5 evidence](evidence/circularity-phase-5-2026-10-22.md). Phase 4 is included in baseline `7760e5a`. Phase 5 qualified independent provider extraction on 2026-10-22 and is included in the reporting baseline `c169d4d`. Actual hosting migration and deployment remain separately authorized.
+**Status:** Phases 1–8 complete locally; Reporting is merged/pushed in `a8c13a2`, with the All permitted courts fix in `8303df2`. Phase 8 is implemented and qualified locally, uncommitted; [acceptance evidence](evidence/circularity-phase-8-2026-10-23.md). Phases 6–7 accepted on 2026-10-22, with [reporting acceptance evidence](evidence/circularity-reporting-2026-10-22.md). See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md), [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md), [Phase 4 evidence](evidence/circularity-phase-4-2026-10-21.md) and [Phase 5 evidence](evidence/circularity-phase-5-2026-10-22.md). Phase 4 is included in baseline `7760e5a`. Phase 5 qualified independent provider extraction on 2026-10-22 and is included in the reporting baseline `c169d4d`. Actual hosting migration and deployment remain separately authorized.
 
 **Inspected baseline:** `cfe3812`, `/Users/stev/htdoc/vmod_wesria`.
 
@@ -232,18 +232,31 @@ Use `/circularity/reporting` for the native report selector, `/circularity` for 
 
 **Gate:** Focused provider/bridge tests → actual HTTP/Egolite acceptance → owned aggregate suite and scoped lint. The focused runner is `tests/e2e/circularity-reporting.mjs`, using the existing guarded disposable runtime and one TaskSpace. Include create/edit/remove, zero/missing/independent counts, filters/reset/refresh/drilldowns, read-only/denial/foreign-court/workspace scope, actual revoked Back/Forward, real unavailability, keyboard and inspected desktop/390px screenshots. Record revision and runtime; harness must exit successfully.
 
-### Stop before subsequent capabilities
+### Phase 8 — Used cooking oil capture and reporting (complete locally)
+
+The user resolved all six business questions on 2026-10-23. [Grilled implementation plan, exact file budget and acceptance](superpowers/plans/2026-10-23-circularity-phase8-used-cooking-oil.md). Implementation and all local acceptance gates passed on 2026-10-23. No deployment.
+
+- Add `used_cooking_oil` as a sixth measurement only in this phase; the five-type descriptions above remain the shipped Phases 1–7 baseline.
+- Record actual net kg, excluding the container, at collector handover with the handover date. Staff may enter known past handovers; do not backfill automatically or convert litres.
+- Use a stall only for separately weighed oil; pooled oil is recorded once in a shared area. Existing food/mixed measurements do not include oil and remain unchanged.
+- Keep management entry, daily-total/individual modes and all existing authorization/write protections. Reuse recorded destinations; Unknown means unknown, and notes/reference may hold collector details without verifying recovery.
+- Five existing production files: EntryService, CircularityClient, Capture, Reporting template and capture-help template. Reuse the existing tests, HTTP fixture and Reporting Egolite runner. No schema, dependency, permission or JavaScript change.
+- The sixth metric expands the shared API contract. Require coordinated provider/connector compatibility; reject missing/malformed support as unavailable. Do not manufacture a missing oil bucket.
+
+**Gate:** Focused provider/bridge tests → real HTTP and Egolite desktop/390px mobile capture plus Overview/all four reports → owned aggregate suite and scoped lint. Reconcile exact oil quantities, zero/missing, edits/removals, scope, history and unavailable states; inspect screenshots and finish one TaskSpace once. No deployment.
+
+### Boundaries after Phase 8
 
 | Later capability | Human decision required before implementation |
 | --- | --- |
-| Used cooking oil | Actual kg measurement and coordinated type compatibility |
+| Used cooking oil | Business rules confirmed for Phase 8 above; implementation, compatibility checks and local acceptance are complete |
 | Categories/materials/causes | Daily-total identity, no totals/components double count, unclassified history |
 | Meals/intensity | Denominator, scope, operator, missing/zero handling; meals are not eligible transactions |
 | Evidence/recovery | Verification authority and proof; labels alone do not establish assurance/confidence |
 | Tenant mapping/ERP | Historical reassignment, source documents, units, corrections, idempotent API exchange |
 | Value/assets/FCI | Cost/baseline rules, asset lifecycle, scoring methodology; FCI last |
 
-Phases 6–7 end the selected work. Commit, push, deployment and later phases require separate authorization. See the [requirements gap](circularity-requirements-gap-2026-10-22.md) for the original proposal mapping and these blocking decisions.
+Phases 1–8 are complete locally. Phase 8 remains uncommitted. Future commit/push, deployment and later phases require separate authorization. See the [requirements gap](circularity-requirements-gap-2026-10-22.md) for the original proposal mapping and these blocking decisions.
 
 ## 4. Verification and review focus
 
@@ -286,3 +299,5 @@ Later score methodology, performance rates, evidence uploads, partner self-servi
 **2026-10-22 — Phase 5 accepted locally:** Baseline `7760e5a`; a physically separate guarded MySQL/October target loaded only Circularity. Exact transfer preserved 3 areas, 34 entries, IDs/UUIDs/versions/deleted rows and provider migration state; schema/index parity, migration no-op, unsafe-target/import rejection and native target HTTP pass. The unchanged connector passed four egolite groups, five actual history returns and 16 inspected screenshots with zero JavaScript exceptions. Source provider rows remained unchanged. Focused 29/789, ordinary HTTP, scoped checks and independent review pass; aggregate 100/1,767 plus five Core races and framework 425/2,287 with four existing SQLite skips. [Evidence, runtime identity, commands and limits](evidence/circularity-phase-5-2026-10-22.md). Temporary runtime closed; worktree preserved and seven files delivered uncommitted. No push, cutover or deployment.
 
 **2026-10-22 — Phases 6–7 accepted locally:** Baseline `c169d4d`, branch `codex/circularity-reporting`, uncommitted source hashes recorded in the browser evidence. Reporting adds native period/area/date/court reports in five production files, with no schema, dependency or asset changes. Phase 6 closed before grouped work. Final focused tests: 36/1,008; real HTTP pass; Egolite: seven groups, three real cached history returns, 13 inspected screenshots, zero runtime exceptions and successful harness exit. Aggregate: Vmod 107/1,986 plus five Core races; framework 425/2,287 with four existing SQLite skips. Scoped lint and one independent review/correction pass complete. [Evidence, source manifest, commands and limits](evidence/circularity-reporting-2026-10-22.md). TaskSpace 29 finished once, temporary runtime closed. Stop before later capability decisions; no commit, push or deployment.
+
+**2026-10-23 — Phase 8 accepted locally:** Baseline `8303df2`, branch `codex/circularity-phase8-oil`, uncommitted source hashes captured. Five production files add net-kg oil capture, operator guidance and six-metric reports; no schema/dependency/permission/asset changes. Focused 39/1,125; real HTTP/Egolite eight groups, three cached history returns, 26 inspected screenshots and harness exit 0. Circularity Human Test at `https://wesria.local.test` passed read-only capture/Overview/all four reports at desktop and 390px, with 12 inspected screenshots and no data/grant changes. TaskSpace 33 reused throughout and finished once. Aggregate: Vmod 110/2,103, five Core concurrency scenarios; framework 425/2,287 with four existing skips. Scoped lint and independent review pass. [Evidence and limits](evidence/circularity-phase-8-2026-10-23.md). No commit, push or deployment.

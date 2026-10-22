@@ -309,7 +309,7 @@ class BridgeTest extends ApplicationTestCase
     private function summaryPayload(): array
     {
         $totals = [];
-        foreach (['food_waste', 'packaging_waste', 'mixed_waste', 'reusable_issued', 'reusable_returned'] as $type) {
+        foreach (['food_waste', 'packaging_waste', 'mixed_waste', 'used_cooking_oil', 'reusable_issued', 'reusable_returned'] as $type) {
             $totals[$type] = ['unit' => str_starts_with($type, 'reusable_') ? 'count' : 'kg',
                 'quantity' => null, 'entry_count' => 0, 'destinations' => []];
         }
@@ -317,6 +317,43 @@ class BridgeTest extends ApplicationTestCase
             'destinations' => [['destination' => 'composting', 'quantity' => '1999999999999.998', 'entry_count' => 2]]];
         return ['filters' => ['date_from' => '2026-01-01', 'date_to' => '2026-01-31'],
             'reporting_timezone' => 'Asia/Kuala_Lumpur', 'totals' => $totals];
+    }
+
+    public function testUsedCookingOilRejectsLegacyOrMalformedProviderSupport(): void
+    {
+        $this->acting($this->company());
+        $valid = $this->summaryPayload();
+        foreach (['missing', 'unit', 'unknown'] as $problem) {
+            $payload = $valid;
+            if ($problem === 'missing') {
+                unset($payload['totals']['used_cooking_oil']);
+            } elseif ($problem === 'unit') {
+                $payload['totals']['used_cooking_oil']['unit'] = 'count';
+            } else {
+                $payload['totals']['unexpected'] = $payload['totals']['used_cooking_oil'];
+                unset($payload['totals']['used_cooking_oil']);
+            }
+            Http::swap(new Factory);
+            Http::fake(['*' => Http::response($payload)]);
+            $this->denied(fn () => (new CircularityClient)->request('GET', '/summary'), 503);
+        }
+        foreach ([null, 'count', 'kg'] as $unit) {
+            $types = ['food_waste' => ['label' => 'Food waste', 'unit' => 'kg']];
+            if ($unit !== null) {
+                $types['used_cooking_oil'] = ['label' => 'Used cooking oil', 'unit' => $unit];
+            }
+            Http::swap(new Factory);
+            Http::fake(['*' => Http::response(['types' => $types, 'modes' => ['daily_total' => 'Daily total'],
+                'destinations' => ['unknown' => 'Unknown'], 'today' => '2026-01-31', 'reporting_timezone' => 'Asia/Kuala_Lumpur'])]);
+            if ($unit === 'kg') {
+                $this->assertSame($types, (new CircularityClient)->request('GET', '/options')['types']);
+            } else {
+                $this->denied(fn () => (new CircularityClient)->request('GET', '/options'), 503);
+            }
+        }
+        $page = $this->reportingPage(['measurement_type' => 'used_cooking_oil']);
+        $this->assertTrue(isset($page['comparison']));
+        $this->assertStringContainsString('measurement_type=used_cooking_oil', $page['summaryLinks']['used_cooking_oil']['total']);
     }
 
     public function testSummaryRejectsMalformedResultsAndPreservesLargeExactStrings(): void
@@ -349,7 +386,8 @@ class BridgeTest extends ApplicationTestCase
     public function testOverviewUsesEffectiveFiltersAndGetErrorsStayCorrectable(): void
     {
         $this->acting($this->company());
-        $options = ['types' => ['food_waste' => ['label' => 'Food waste', 'unit' => 'kg']],
+        $options = ['types' => ['food_waste' => ['label' => 'Food waste', 'unit' => 'kg'],
+                'used_cooking_oil' => ['label' => 'Used cooking oil', 'unit' => 'kg']],
             'destinations' => ['composting' => 'Composting'], 'modes' => ['daily_total' => 'Daily total'],
             'today' => '2026-01-31', 'reporting_timezone' => 'Asia/Kuala_Lumpur'];
         Http::fake(['*/options' => Http::response($options), '*/areas' => Http::response(['areas' => []]),
@@ -434,6 +472,8 @@ class BridgeTest extends ApplicationTestCase
         $this->assertSame([], $rows['43']['totals']);
         $this->assertStringContainsString('area_id=42', $rows['42']['links']['food_waste']['total']);
         Http::assertSentCount(3);
+        $html = (new \Cms\Classes\Controller)->run('/circularity/reporting')->getContent();
+        $this->assertStringContainsString('colspan="6" class="text-secondary">No matching records', $html);
         $page = $this->reportingPage(['report' => 'daily', 'date_from' => '2024-01-01', 'date_to' => '2026-01-31']);
         $this->assertCount(1, $page['reportRows']);
         $this->assertSame('2026-01-01', $page['reportRows'][0]['key']);
@@ -474,7 +514,8 @@ class BridgeTest extends ApplicationTestCase
         $cells = (new \DOMXPath($document))->query('//tr[@data-report-key="2026-01-01"]/td');
         $this->assertSame('food_waste', $cells->item(0)->getAttribute('data-report-type'));
         $this->assertSame('1999999999999.998', trim($cells->item(0)->textContent));
-        $this->assertSame('reusable_returned', $cells->item(4)->getAttribute('data-report-type'));
+        $this->assertSame('used_cooking_oil', $cells->item(3)->getAttribute('data-report-type'));
+        $this->assertSame('reusable_returned', $cells->item(5)->getAttribute('data-report-type'));
     }
 
     private function reportingPage(array $query = [], int $comparisonStatus = 200, array $areas = [], bool $reorder = false): \ArrayObject
@@ -585,7 +626,8 @@ class BridgeTest extends ApplicationTestCase
         \Request::instance()->setMethod('GET');
         \Request::instance()->query->replace([]);
         Http::fake([
-            '*/options' => Http::response(['types' => ['food_waste' => ['label' => 'Food waste', 'unit' => 'kg']],
+            '*/options' => Http::response(['types' => ['food_waste' => ['label' => 'Food waste', 'unit' => 'kg'],
+                'used_cooking_oil' => ['label' => 'Used cooking oil', 'unit' => 'kg']],
                 'modes' => ['daily_total' => 'Daily total'], 'destinations' => ['unknown' => 'Unknown'],
                 'reporting_timezone' => 'Asia/Kuala_Lumpur', 'today' => '2026-01-31']),
             '*/areas' => Http::response(['areas' => []]),

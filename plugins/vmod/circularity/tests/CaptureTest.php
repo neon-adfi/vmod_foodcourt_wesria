@@ -113,6 +113,44 @@ class CaptureTest extends ApplicationTestCase
         $this->assertSame('2.000', $this->api('GET', '/summary', $range)['totals']['food_waste']['quantity']);
     }
 
+    public function testUsedCookingOilKeepsExactScopedHandoverTotalsAndExistingWriteRules(): void
+    {
+        $area = $this->area();
+        $oil = $this->measurement($area, ['measurement_type' => 'used_cooking_oil',
+            'quantity' => '10.125', 'destination' => 'recycling']);
+        $first = $this->api('POST', '/entries', $oil, 201)['entry'];
+        $this->assertSame('kg', $first['unit']);
+        $this->api('POST', '/entries', array_replace($oil, ['uuid' => (string) Str::uuid()]), 409);
+        $this->api('POST', '/entries', array_replace($oil, ['uuid' => (string) Str::uuid(), 'mode' => 'individual']), 409);
+        $this->api('POST', '/entries', array_replace($oil, ['uuid' => (string) Str::uuid(),
+            'quantity' => '2.000', 'destination' => 'unknown']), 201);
+        $this->api('POST', '/entries', $this->measurement($area), 201);
+        $range = ['date_from' => '2026-01-01', 'date_to' => '2026-01-01', 'area_id' => $area['id']];
+        foreach ([null, 'area', 'date', 'branch'] as $group) {
+            $summary = $this->api('GET', '/summary', $range + ($group ? ['group_by' => $group] : []));
+            $this->assertCount(6, $summary['totals']);
+            $this->assertSame('12.125', $summary['totals']['used_cooking_oil']['quantity']);
+            $this->assertSame('1.250', $summary['totals']['food_waste']['quantity']);
+            if ($group) {
+                $this->assertSame($summary['totals'], $summary['groups'][0]['totals']);
+            }
+        }
+        $this->assertSame(2, $this->api('GET', '/entries', $range + ['measurement_type' => 'used_cooking_oil'])['total']);
+        $this->assertSame('2.000', $this->api('GET', '/summary', $range + ['destination' => 'unknown'])['totals']['used_cooking_oil']['quantity']);
+        foreach (['1.0001', '1e3', '1000000000000', '-1', 1.25] as $quantity) {
+            $this->api('PATCH', '/entries/' . $first['uuid'], ['version' => 1, 'quantity' => $quantity], 422);
+        }
+        $this->api('PATCH', '/entries/' . $first['uuid'], ['version' => 1, 'destination' => 'not_applicable'], 422);
+        $this->api('PATCH', '/entries/' . $first['uuid'], ['version' => 1, 'quantity' => '0']);
+        $this->assertSame('0.000', $this->api('GET', '/summary', $range + ['destination' => 'recycling'])['totals']['used_cooking_oil']['quantity']);
+        $this->api('DELETE', '/entries/' . $first['uuid'], ['version' => 2]);
+        $this->assertNull($this->api('GET', '/summary', $range + ['destination' => 'recycling'])['totals']['used_cooking_oil']['quantity']);
+        $this->api('POST', '/entries', $oil, 409);
+        $this->context['branch_refs'] = ['Court-B'];
+        $this->api('GET', '/entries/' . $first['uuid'], [], 404);
+        $this->api('GET', '/summary', $range, 404);
+    }
+
     public function testRangesAreInclusiveAndListsKeepHistoryAndExactDateCompatibility(): void
     {
         $area = $this->area();
