@@ -135,7 +135,8 @@ class CircularityClient
             $valid = Validator::make($result, ['types' => 'required|array', 'modes' => 'required|array',
                 'destinations' => 'required|array', 'reporting_timezone' => 'required|timezone',
                 'today' => 'required|date_format:Y-m-d'])->passes()
-                && ($result['types']['used_cooking_oil']['unit'] ?? null) === 'kg';
+                && ($result['types']['used_cooking_oil']['unit'] ?? null) === 'kg'
+                && ($result['types']['single_use_issued']['unit'] ?? null) === 'count';
             foreach (is_array($result['types'] ?? null) ? $result['types'] : [] as $key => $type) {
                 $valid = $valid && is_string($key) && is_array($type)
                     && is_string($type['label'] ?? null) && in_array($type['unit'] ?? '', ['kg', 'count'], true);
@@ -187,9 +188,9 @@ class CircularityClient
             'reporting_timezone' => 'required|timezone', 'filters' => 'required|array',
             'filters.date_from' => 'required|date_format:Y-m-d', 'filters.date_to' => 'required|date_format:Y-m-d',
             'filters.branch_ref' => 'sometimes|string|max:128', 'filters.area_id' => 'sometimes|integer|min:1',
-            'filters.measurement_type' => 'sometimes|in:food_waste,packaging_waste,mixed_waste,used_cooking_oil,reusable_issued,reusable_returned',
+            'filters.measurement_type' => 'sometimes|in:food_waste,packaging_waste,mixed_waste,used_cooking_oil,reusable_issued,reusable_returned,single_use_issued',
             'filters.destination' => 'sometimes|in:unknown,landfill,incineration,recycling,composting,anaerobic_digestion,animal_feed,other,not_applicable',
-            'totals' => 'required|array|size:6',
+            'totals' => 'required|array|size:7',
         ])->fails() || $result['filters']['date_to'] < $result['filters']['date_from']
             || array_diff(array_keys($result['filters']), ['date_from', 'date_to', 'branch_ref', 'area_id', 'measurement_type', 'destination'])) {
             return false;
@@ -230,12 +231,12 @@ class CircularityClient
 
     private function validTotals($totals): bool
     {
-        if (!is_array($totals) || count($totals) !== 6) {
+        if (!is_array($totals) || count($totals) !== 7) {
             return false;
         }
-        foreach (['food_waste', 'packaging_waste', 'mixed_waste', 'used_cooking_oil', 'reusable_issued', 'reusable_returned'] as $type) {
+        foreach (['food_waste', 'packaging_waste', 'mixed_waste', 'used_cooking_oil', 'reusable_issued', 'reusable_returned', 'single_use_issued'] as $type) {
             $total = $totals[$type] ?? null;
-            $count = str_starts_with($type, 'reusable_');
+            $count = in_array($type, ['reusable_issued', 'reusable_returned', 'single_use_issued'], true);
             if (!is_array($total) || ($total['unit'] ?? null) !== ($count ? 'count' : 'kg')
                 || !is_int($total['entry_count'] ?? null) || $total['entry_count'] < 0
                 || !array_key_exists('quantity', $total) || !is_array($total['destinations'] ?? null)
@@ -287,7 +288,7 @@ class CircularityClient
         if (Validator::make($row, [
             'branch_ref' => 'required|string|max:128', 'area_id' => 'required|integer|min:1',
             'measurement_date' => 'required|date_format:Y-m-d',
-            'measurement_type' => 'required|in:food_waste,packaging_waste,mixed_waste,used_cooking_oil,reusable_issued,reusable_returned',
+            'measurement_type' => 'required|in:food_waste,packaging_waste,mixed_waste,used_cooking_oil,reusable_issued,reusable_returned,single_use_issued',
             'mode' => 'required|in:daily_total,individual', 'unit' => 'required|in:kg,count',
             'destination' => 'required|in:unknown,landfill,incineration,recycling,composting,anaerobic_digestion,animal_feed,other,not_applicable',
             'reference' => 'present|nullable|string|max:120', 'notes' => 'present|nullable|string|max:2000',
@@ -295,7 +296,7 @@ class CircularityClient
         ])->fails() || !is_string($row['quantity'] ?? null)) {
             return false;
         }
-        $count = str_starts_with($row['measurement_type'], 'reusable_');
+        $count = in_array($row['measurement_type'], ['reusable_issued', 'reusable_returned', 'single_use_issued'], true);
         return $row['unit'] === ($count ? 'count' : 'kg')
             && ($row['destination'] === 'not_applicable') === $count
             && preg_match($count ? '/\A[0-9]{1,12}\z/' : '/\A[0-9]{1,12}\.[0-9]{3}\z/', $row['quantity']) === 1;

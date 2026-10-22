@@ -3,11 +3,11 @@ const assert = (await import('node:assert/strict')).default;
 const fs = await import('node:fs/promises');
 const { proof_dir: proof } = JSON.parse(await fs.readFile('/private/tmp/wesria-circularity-phase4-runtime.json', 'utf8'));
 const fixture = JSON.parse(await fs.readFile(proof + '/fixture.json', 'utf8'));
-const output = '/Users/stev/htdoc/vmod_wesria/output/ego-lite/circularity-phase8';
+const output = '/Users/stev/htdoc/vmod_wesria/output/ego-lite/circularity-phase9';
 const base = fixture.base_url;
 const sourceSha256 = {};
 const { createHash } = await import('node:crypto');
-for (const path of ['plugins/vmod/circularity/classes/EntryService.php', 'themes/vmod/pages/circularity-entries.htm', 'themes/vmod/layouts/default.htm', 'themes/vmod/pages/circularity-reporting.htm',
+for (const path of ['plugins/vmod/circularity/classes/EntryService.php', 'themes/vmod/pages/circularity-entries.htm', 'themes/vmod/pages/circularity.htm', 'themes/vmod/layouts/default.htm', 'themes/vmod/pages/circularity-reporting.htm',
     'plugins/vmod/circularityui/components/Capture.php', 'plugins/vmod/circularityui/classes/CircularityClient.php',
     'plugins/vmod/circularity/classes/CaptureApi.php', 'tests/e2e/circularity-reporting.mjs', 'tests/vmod/check-circularity-http.php']) {
     sourceSha256[path] = createHash('sha256').update(await fs.readFile('/Users/stev/htdoc/vmod_wesria/' + path)).digest('hex');
@@ -16,7 +16,7 @@ assert.match(base, /^http:\/\/127\.0\.0\.1:\d+$/);
 assert.equal(fixture.runtime.host, 'mysql-test');
 assert.equal(fixture.runtime.database, 'vmod_wesria_test');
 await fs.mkdir(output, { recursive: true });
-const task = await taskSpace('Wesria Circularity Phase 8 acceptance');
+const task = await taskSpace('Wesria Circularity Phase 9 acceptance');
 const page = task.page('p1');
 let report = { spaceId: task.spaceId, origin: base, runtime: fixture.runtime, fixtureNonce: fixture.nonce, sourceSha256, started: new Date().toISOString(), scenarios: [], screenshots: [], history: [], runtimeErrors: [], passed: false };
 let old;
@@ -48,7 +48,7 @@ async function go(path) {
 async function submit(selector) {
     await page.evaluate(() => { document.documentElement.dataset.acceptanceNavigation = 'pending'; });
     await page.press(selector + ' button[type=submit]', 'Enter');
-    await page.waitForFunction(() => !document.documentElement.dataset.acceptanceNavigation, undefined, { timeout: 15000 });
+    await page.waitForFunction(() => document.documentElement && !document.documentElement.dataset.acceptanceNavigation, undefined, { timeout: 15000 });
     await page.waitForFunction(() => typeof window.oc?.request === 'function');
 }
 async function shot(name) {
@@ -118,7 +118,7 @@ try {
         assert.equal(await page.evaluate(() => document.querySelector('nav[aria-label="Circularity sections"] [aria-current="page"]').textContent.trim()), 'Reporting');
         assert.equal(await page.evaluate(() => document.querySelector('#filter-from').value), fixture.today.slice(0, 8) + '01');
         await go('/circularity/reporting?' + scope);
-        for (const [type, expected] of Object.entries({ food_waste: '12.125', used_cooking_oil: '12.125', mixed_waste: '3.250', packaging_waste: '0.000', reusable_issued: '8', reusable_returned: '12' })) assert.equal(await periodValue(type), expected);
+        for (const [type, expected] of Object.entries({ food_waste: '12.125', used_cooking_oil: '12.125', mixed_waste: '3.250', packaging_waste: '0.000', reusable_issued: '8', reusable_returned: '12', single_use_issued: '130' })) assert.equal(await periodValue(type), expected);
         assert.equal(await periodValue('food_waste', 'previous'), 'No data');
         await shot('desktop-period-filters'); await showTable(); await shot('desktop-period');
         await page.click('[data-report-type="food_waste"] [data-period="current"] a');
@@ -146,6 +146,7 @@ try {
         await page.selectOption('#filter-destination', 'composting'); await submit('#circularity-filters');
         assert.equal(await groupedValue(fixture.areas.main), '10.125');
         assert.equal(await groupedValue(fixture.areas.main, 'reusable_issued'), 'No data');
+        assert.equal(await groupedValue(fixture.areas.main, 'single_use_issued'), 'No data');
         await page.click(`[data-report-key="${fixture.areas.main}"] [data-report-type=food_waste] a`);
         await page.waitForSelector('tbody'); assert.equal(await page.evaluate(() => document.querySelectorAll('tbody tr').length), 1);
         const drill = new URL(await page.url()).searchParams;
@@ -199,12 +200,42 @@ try {
             }
             await go('/circularity/entries?new=1');
             await page.selectOption('#capture-type', 'used_cooking_oil');
-            await page.focus('details summary'); await page.keyboard.press('Enter');
-            assert.equal(await page.evaluate(() => document.querySelector('details').open), true);
-            await page.hover('details'); await shot(screen + '-oil-guidance');
+            await page.focus('details:not(#single-use-guidance) summary'); await page.keyboard.press('Enter');
+            assert.equal(await page.evaluate(() => document.querySelector('details:not(#single-use-guidance)').open), true);
+            await page.hover('details:not(#single-use-guidance)'); await shot(screen + '-oil-guidance');
         }
         await page.cdp('Emulation.setDeviceMetricsOverride', desktop);
         await passed('Oil reconciles in Overview and all reports on desktop and mobile');
+    }
+    if (!done('Single-use reconciles in Overview and all reports on desktop and mobile')) {
+        for (const [screen, viewport] of [['desktop', desktop], ['mobile', mobile]]) {
+            await page.cdp('Emulation.setDeviceMetricsOverride', viewport);
+            await go('/circularity?' + scope);
+            assert.match(await page.evaluate(() => document.querySelector('#summary-single_use_issued').closest('.card').textContent), /130/);
+            await page.hover('#summary-single_use_issued'); await shot(screen + '-single-use-overview');
+            await go('/circularity/reporting?' + scope);
+            for (const kind of ['period', 'area', 'daily', 'court']) {
+                await page.selectOption('#filter-court', ''); await switchReport(kind);
+                assert.equal(new URL(await page.url()).searchParams.get('branch_ref'), '');
+                const value = kind === 'period' ? await periodValue('single_use_issued')
+                    : await page.evaluate(() => document.querySelector('[data-report-total=single_use_issued]').textContent.trim());
+                assert.equal(value, '130');
+                await showTable(); await shot(screen + '-single-use-' + kind);
+                await page.click(kind === 'period' ? '[data-report-type=single_use_issued] [data-period=current] a' : '[data-report-total=single_use_issued] a');
+                await page.waitForSelector('tbody');
+                assert.equal(await page.evaluate(() => document.querySelectorAll('tbody tr').length), 2);
+                const query = new URL(await page.url()).searchParams;
+                assert.equal(query.get('measurement_type'), 'single_use_issued'); assert.equal(query.has('report'), false);
+                await go('/circularity/reporting?' + scope + '&report=' + kind);
+            }
+            await go('/circularity/entries?new=1');
+            await page.selectOption('#capture-type', 'single_use_issued');
+            await page.focus('#single-use-guidance summary'); await page.keyboard.press('Enter');
+            assert.equal(await page.evaluate(() => document.querySelector('#single-use-guidance').open), true);
+            await page.mouse.move(3,400); await page.mouse.wheel(0,250); await shot(screen + '-single-use-guidance');
+        }
+        await page.cdp('Emulation.setDeviceMetricsOverride', desktop);
+        await passed('Single-use reconciles in Overview and all reports on desktop and mobile');
     }
     if (!done('UI create edit remove affect the next read; inactive history and unmatched rows stay explicit')) {
         if (!fixture.reporting_area) {
@@ -219,8 +250,8 @@ try {
             await go('/circularity/entries?new=1'); fixture.reporting_entry = new URL(await page.url()).searchParams.get('uuid'); await persist();
         } else await go('/circularity/entries?new=1&uuid=' + fixture.reporting_entry);
         await page.selectOption('#capture-court', String(fixture.a.branch_id)); await page.selectOption('#capture-type', 'used_cooking_oil');
-        await page.focus('details summary'); await page.keyboard.press('Enter');
-        assert.equal(await page.evaluate(() => document.querySelector('details').open), true);
+        await page.focus('details:not(#single-use-guidance) summary'); await page.keyboard.press('Enter');
+        assert.equal(await page.evaluate(() => document.querySelector('details:not(#single-use-guidance)').open), true);
         assert.equal(await page.evaluate(() => document.querySelector('#capture-unit').textContent.trim()), 'kg');
         await shot('desktop-oil-capture');
         await page.fill('#capture-date', fixture.today); await page.selectOption('#capture-destination', 'unknown');
@@ -269,6 +300,47 @@ try {
         await page.acceptDialog(); await page.waitForURL(base + '/circularity/entries');
         await passed('Both inclusive periods reconcile to their own saved records');
     }
+    if (!done('Single-use UI tallies edit zero remove and previous-period records')) {
+        const areaScope = new URLSearchParams({ area_id: String(fixture.reporting_area), date_from: fixture.today, date_to: fixture.today });
+        await go('/circularity/entries?new=1' + (fixture.single_use_entry ? '&uuid=' + fixture.single_use_entry : ''));
+        fixture.single_use_entry = new URL(await page.url()).searchParams.get('uuid'); await persist();
+        await page.selectOption('#capture-court', String(fixture.a.branch_id)); await page.selectOption('#capture-type', 'single_use_issued');
+        await page.selectOption('#capture-area', String(fixture.reporting_area)); await page.fill('#capture-date', fixture.today);
+        assert.equal(await page.evaluate(() => document.querySelector('#capture-unit').textContent.trim()), 'count');
+        assert.equal(await page.evaluate(() => document.querySelector('#capture-quantity').inputMode), 'numeric');
+        assert.equal(await page.evaluate(() => document.querySelector('#capture-destination').value), 'not_applicable');
+        await page.focus('#single-use-guidance summary'); await page.keyboard.press('Enter');
+        assert.equal(await page.evaluate(() => document.querySelector('#single-use-guidance').open), true);
+        await shot('desktop-single-use-capture');
+        await page.cdp('Emulation.setDeviceMetricsOverride', mobile); await page.mouse.move(3,400); await page.mouse.wheel(0,250); await shot('mobile-single-use-capture');
+        await page.cdp('Emulation.setDeviceMetricsOverride', desktop);
+        for (const quantity of ['3', '5', '0']) {
+            await page.fill('#capture-quantity', quantity); await submit('#circularity-entry-form');
+            await go('/circularity/reporting?' + areaScope); assert.equal(await periodValue('single_use_issued'), quantity);
+            await go('/circularity/entries?uuid=' + fixture.single_use_entry);
+        }
+        await page.click('[data-request="circularityCapture::onRemoveEntry"]'); await page.acceptDialog(); await page.waitForURL(base + '/circularity/entries');
+        await go('/circularity/reporting?' + areaScope); assert.equal(await periodValue('single_use_issued'), 'No data');
+        const previousDate = new Date(fixture.today + 'T12:00:00Z'); previousDate.setUTCDate(previousDate.getUTCDate() - 1);
+        const date = previousDate.toISOString().slice(0, 10);
+        await go('/circularity/entries?new=1' + (fixture.single_use_previous ? '&uuid=' + fixture.single_use_previous : ''));
+        fixture.single_use_previous = new URL(await page.url()).searchParams.get('uuid'); await persist();
+        await page.selectOption('#capture-court', String(fixture.a.branch_id)); await page.selectOption('#capture-type', 'single_use_issued');
+        await page.selectOption('#capture-area', String(fixture.areas.main)); await page.fill('#capture-date', date);
+        await page.fill('#capture-quantity', '11'); await submit('#circularity-entry-form');
+        await go('/circularity/reporting?' + scope);
+        assert.equal(await periodValue('single_use_issued'), '130'); assert.equal(await periodValue('single_use_issued', 'previous'), '11');
+        await showTable(); await shot('desktop-single-use-both-periods');
+        await page.click('[data-report-type=single_use_issued] [data-period=previous] a'); await page.waitForSelector('tbody');
+        const query = new URL(await page.url()).searchParams;
+        assert.equal(query.get('date_from'), date); assert.equal(query.get('date_to'), date);
+        assert.equal(query.get('area_id'), String(fixture.areas.main)); assert.equal(query.get('measurement_type'), 'single_use_issued');
+        assert.equal(await page.evaluate(() => document.querySelectorAll('tbody tr').length), 1);
+        assert.match(await page.evaluate(() => document.querySelector('tbody td:nth-child(4)').textContent), /11 count/);
+        await go('/circularity/entries?uuid=' + fixture.single_use_previous); await page.click('[data-request="circularityCapture::onRemoveEntry"]');
+        await page.acceptDialog(); await page.waitForURL(base + '/circularity/entries');
+        await passed('Single-use UI tallies edit zero remove and previous-period records');
+    }
     if (!done('Read-only denial foreign courts and actual Back Forward revocation and workspace changes')) {
         await control('permissions', 'read'); await go('/circularity/reporting?' + scope);
         assert.equal(await periodValue('food_waste'), '12.125');
@@ -316,6 +388,7 @@ try {
         await arm('unavailable'); await fs.writeFile(proof + '/barriers/' + barrier + '.release', 'release');
         await navigation;
         assert.equal(await periodValue('food_waste'), '12.125'); assert.equal(await periodValue('food_waste', 'previous'), 'Unavailable');
+        assert.equal(await periodValue('single_use_issued'), '130'); assert.equal(await periodValue('single_use_issued', 'previous'), 'Unavailable');
         assert.match(await page.evaluate(() => document.body.textContent), /previous period is temporarily unavailable/);
         assert.ok((await receipts()).some(r => r.request === hold.request && r.stage === 'completed' && r.status === 200));
         await showTable(); await shot('desktop-previous-unavailable');

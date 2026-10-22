@@ -128,7 +128,7 @@ class CaptureTest extends ApplicationTestCase
         $range = ['date_from' => '2026-01-01', 'date_to' => '2026-01-01', 'area_id' => $area['id']];
         foreach ([null, 'area', 'date', 'branch'] as $group) {
             $summary = $this->api('GET', '/summary', $range + ($group ? ['group_by' => $group] : []));
-            $this->assertCount(6, $summary['totals']);
+            $this->assertCount(7, $summary['totals']);
             $this->assertSame('12.125', $summary['totals']['used_cooking_oil']['quantity']);
             $this->assertSame('1.250', $summary['totals']['food_waste']['quantity']);
             if ($group) {
@@ -271,6 +271,49 @@ class CaptureTest extends ApplicationTestCase
         $this->assertNull($this->api('GET', '/summary', $range)['totals']['food_waste']['quantity']);
         $this->context['branch_refs'] = [];
         $this->api('GET', '/summary', $range, 403);
+    }
+
+    public function testSingleUseCountsRemainIndependentExactAndEditable(): void
+    {
+        $area = $this->area();
+        $type = ['measurement_type' => 'single_use_issued', 'destination' => 'not_applicable'];
+        $first = $this->measurement($area, $type + ['mode' => 'individual', 'quantity' => '103']);
+        $entry = $this->api('POST', '/entries', $first, 201)['entry'];
+        $this->assertSame('count', $entry['unit']);
+        $this->assertSame('103', $entry['quantity']);
+        $this->assertSame(1, $this->api('POST', '/entries', $first)['entry']['version']);
+        $second = $this->api('POST', '/entries', $this->measurement($area, $type + ['mode' => 'individual', 'quantity' => '27']), 201)['entry'];
+        $this->api('POST', '/entries', $this->measurement($area, ['quantity' => '10.125']), 201);
+        $range = ['area_id' => $area['id'], 'date_from' => '2026-01-01', 'date_to' => '2026-01-01'];
+        foreach ([null, 'area', 'date', 'branch'] as $group) {
+            $summary = $this->api('GET', '/summary', $range + ($group ? ['group_by' => $group] : []));
+            $this->assertCount(7, $summary['totals']);
+            $this->assertSame('130', $summary['totals']['single_use_issued']['quantity']);
+            $this->assertSame('10.125', $summary['totals']['food_waste']['quantity']);
+            $this->assertNull($summary['totals']['reusable_issued']['quantity']);
+            if ($group) {
+                $this->assertSame('130', $summary['groups'][0]['totals']['single_use_issued']['quantity']);
+            }
+        }
+        $this->assertCount(2, $this->api('GET', '/entries', $range + $type)['data']);
+        $this->api('POST', '/entries', $this->measurement($area, $type + ['quantity' => '1']), 409);
+        foreach (['1.0', '2.000', '-1', '1e3', '1000000000000', 1, 1.5, null] as $quantity) {
+            $this->api('POST', '/entries', $this->measurement($area, $type + ['mode' => 'individual', 'quantity' => $quantity]), 422);
+        }
+        $this->api('POST', '/entries', $this->measurement($area, ['measurement_type' => 'single_use_issued', 'quantity' => '1']), 422);
+        $this->api('PATCH', '/entries/' . $entry['uuid'], ['version' => 1, 'quantity' => '0']);
+        $this->api('PATCH', '/entries/' . $entry['uuid'], ['version' => 1, 'quantity' => '2'], 409);
+        $this->api('DELETE', '/entries/' . $second['uuid'], ['version' => 1]);
+        $this->assertSame('0', $this->api('GET', '/summary', $range)['totals']['single_use_issued']['quantity']);
+        $this->api('DELETE', '/entries/' . $entry['uuid'], ['version' => 2]);
+        $this->assertNull($this->api('GET', '/summary', $range)['totals']['single_use_issued']['quantity']);
+        $this->api('POST', '/entries', $first, 409);
+        $daily = $this->measurement($area, $type + ['quantity' => '999999999999']);
+        $this->assertSame('999999999999', $this->api('POST', '/entries', $daily, 201)['entry']['quantity']);
+        $this->api('POST', '/entries', $this->measurement($area, $type + ['quantity' => '1']), 409);
+        $this->context['branch_refs'] = ['Court-B'];
+        $this->api('GET', '/entries/' . $daily['uuid'], [], 404);
+        $this->api('GET', '/summary', $range, 404);
     }
 
     public function testValidationPreservesZeroAndRejectsFutureDatesFloatExponentOverflowAndFractionalCounts(): void

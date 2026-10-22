@@ -33,7 +33,7 @@ class Capture extends \Cms\Classes\ComponentBase
             'measurement_date' => 'nullable|date_format:Y-m-d|prohibits:date_from,date_to',
             'date_from' => 'nullable|required_with:date_to|date_format:Y-m-d',
             'date_to' => 'nullable|required_with:date_from|date_format:Y-m-d',
-            'measurement_type' => 'nullable|string|in:food_waste,packaging_waste,mixed_waste,used_cooking_oil,reusable_issued,reusable_returned',
+            'measurement_type' => 'nullable|string|in:food_waste,packaging_waste,mixed_waste,used_cooking_oil,reusable_issued,reusable_returned,single_use_issued',
             'destination' => 'nullable|string|in:unknown,landfill,incineration,recycling,composting,anaerobic_digestion,animal_feed,other,not_applicable',
             'page' => 'nullable|integer|min:1|max:1000000'];
         if ($this->property('view') === 'reporting') {

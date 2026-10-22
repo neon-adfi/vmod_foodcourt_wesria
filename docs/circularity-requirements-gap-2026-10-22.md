@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-22, Asia/Kuala_Lumpur
 **Baseline:** `main` @ `c169d4d` (Circularity Phases 1–5 complete locally)
-**Status (updated 2026-10-23):** Phases 6–7 complete locally and merged/pushed to `main` in `a8c13a2`; the All permitted courts fix and regression are in `8303df2`. See [qualification evidence](evidence/circularity-reporting-2026-10-22.md). Phase 8 used cooking oil is complete locally, uncommitted on `codex/circularity-phase8-oil`; see [acceptance evidence](evidence/circularity-phase-8-2026-10-23.md). Other capabilities remain behind §6 gates. No deployment has occurred; later phases, commit/push and deployment need separate authorization.
+**Status (updated 2026-10-23):** Phases 6–7 complete locally and merged/pushed to `main` in `a8c13a2`; the All permitted courts fix and regression are in `8303df2`. See [qualification evidence](evidence/circularity-reporting-2026-10-22.md). Phase 8 used cooking oil is complete locally and merged/pushed in `a32dac4`; see [acceptance evidence](evidence/circularity-phase-8-2026-10-23.md). Phase 9 single-use issued capture/reporting is complete locally and uncommitted; see [acceptance evidence](evidence/circularity-phase-9-2026-10-23.md). Other capabilities remain behind §6 gates. No deployment has occurred; later phases, commit/push and deployment need separate authorization.
 
 **Requirement sources** (proposal documents, not validated specifications):
 
@@ -19,8 +19,8 @@
 
 ## 1. Summary
 
-- **Captured now:** 6 manual measurement types per court + area + date: food waste (kg), packaging waste (kg), mixed waste (kg), used cooking oil handed over (net kg), reusable items issued (count), reusable items returned (count). Each waste entry has one *recorded* destination.
-- **Reported now:** Overview shows 6 totals and destination tables. `/circularity/reporting` adds period comparison, area/stall breakdown, daily trend and raw court comparison with the same scope/date/destination filters and record drilldowns.
+- **Captured now:** 7 manual measurement types per court + area + date: food waste (kg), packaging waste (kg), mixed waste (kg), used cooking oil handed over (net kg), reusable items issued (count), reusable items returned (count), single-use items first handed to customers (count). Each waste entry has one *recorded* destination.
+- **Reported now:** Overview shows 7 totals and destination tables. `/circularity/reporting` adds period comparison, area/stall breakdown, daily trend and raw court comparison with the same scope/date/destination filters and record drilldowns.
 - **Coverage:** the data touches 3 of 13 RAI layers (Physical, Data and Recovery), and only partly. It can seed 3 of 13 formal reports, and only as visibility (maturity L1–L2). It cannot calculate FCI™: 0 of 7 dimensions are fully computable.
 - **Selected low-effort gain:** Section 3B items 1–3 and 7 are delivered in Phases 6–7 using existing measurements. Ratios, inferred capture gaps and performance claims remain excluded; the contract still says "Do not infer recovery rates, prevention, reuse cycles, coverage or a score" (plan §2).
 - **Blocked reports:** 43 read-only reports, each mapped to the API data, module or feature that unlocks it (Section 3C). Section 3D catalogues the 13 API data items, 7 modules, 7 features and 1 plan permission, ranked by reach, with plan conflicts marked.
@@ -37,7 +37,7 @@
 | Court | Core branch (opaque `branch_ref`) | One branch = one food court |
 | Area | `stall` or `shared_area`, name, active flag | **Not linked** to an ERP Party, stall owner or tenant |
 | Date | Measurement date (no time) | Reporting timezone: KL |
-| Type | `food_waste`, `packaging_waste`, `mixed_waste`, `used_cooking_oil`, `reusable_issued`, `reusable_returned` | Mixed waste is never split into components |
+| Type | `food_waste`, `packaging_waste`, `mixed_waste`, `used_cooking_oil`, `reusable_issued`, `reusable_returned`, `single_use_issued` | Mixed waste is never split into components |
 | Mode | `daily_total` or `individual` | |
 | Quantity | kg (3 dp) or whole count | Explicit zero ≠ no data |
 | Destination | `unknown`, `landfill`, `incineration`, `recycling`, `composting`, `anaerobic_digestion`, `animal_feed`, `other`, `not_applicable` | *Recorded*, not verified |
@@ -48,11 +48,11 @@
 
 | Page | Shipped content |
 | --- | --- |
-| `/circularity` | 6 measurement totals; destination table per waste type; filters (court, area, destination, date range, quick ranges); drill-down to records |
+| `/circularity` | 7 measurement totals; destination table per waste type; filters (court, area, destination, date range, quick ranges); drill-down to records |
 | `/circularity/reporting` | Period comparison, area/stall breakdown, recorded-date trend, raw court comparison; explicit missing data, zero and service-unavailable states |
 | `/circularity/entries` | Record list, capture, edit and remove |
 | `/circularity/areas` | Area management |
-| API `GET /summary` | Legacy totals unchanged; optional `group_by=area\|date\|branch` adds top-level `group_by` and `groups` with the same six-metric totals shape (Phase 8 requires a matching provider/connector). |
+| API `GET /summary` | Existing metrics retain their meanings; optional `group_by=area\|date\|branch` adds top-level `group_by` and `groups` with the same seven-metric totals shape (Phase 9 requires a matching provider/connector). |
 
 ### Adjacent data in ERP (not connected to circularity)
 
@@ -66,9 +66,10 @@ Products/SKUs, supplier offers, purchase orders, goods receipts, sales orders, d
 
 | Page | Report | RAI target it seeds | Maturity |
 | --- | --- | --- | --- |
-| Circularity overview | **Measurement totals**: food, packaging and mixed kg; reusable issued and returned | #08 Waste & Recovery, #07 Reuse (counts only) | L1 Visibility |
+| Circularity overview | **Measurement totals**: food, packaging, mixed and used cooking oil kg; reusable issued/returned and single-use issued counts | #08 Waste & Recovery, #07 Reuse (counts only) | L1 Visibility |
 | Circularity overview | **Recorded destination breakdown** per waste stream | #08 Waste, Recovery & Verified Destination (the "recorded" part only) | L2 Measurement |
 | Capture / Overview / Reporting | **Used cooking oil handed over**: net kg, recorded destination, period/area/date/court totals | B12, RAI #08 (recorded quantity only) | L2 Measurement |
+| Capture / Overview / Reporting | **Single-use items issued**: gross first-customer-handover counts by period/area/date/court | A11; B22 still needs an approved baseline and methodology | L1 Visibility |
 | Measurements | **Filtered record list**: per area, date, type and destination | L03 Data (raw dataset) | L1 |
 
 ### 3B. Existing-data reports (Phases 6–7 selection)
@@ -118,7 +119,7 @@ All rows also need a `/summary` grouping (area, date, branch, sub-type) and a Ci
 | B18 | Reuse > cycles per asset, loss rate, breakage | — | MOD3 | — |
 | B19 | Reuse > cost per use, wash cost, wash water and energy | A12 | MOD1, MOD3 | — |
 | B20 | Reuse > break-even achievement | — | MOD3, MOD6 | — |
-| B21 | Reuse > reuse penetration (reusable-served ÷ eligible transactions) | A1 | — | — |
+| B21 | Reuse > reuse penetration (reusable-served ÷ eligible transactions) | Separately defined eligible transactions and reusable-served events; A1 meals alone is insufficient | — | — |
 | B22 | Reuse > single-use items avoided (baseline − actual) | A11 | — | F2 |
 | B23 | Tenant > Tenant Circularity Scorecard (9 dimensions) | A6, A8, A9, A13 | MOD4 | F7 |
 | B24 | Tenant > benchmark normalized per tenant (kg per meal) | A1 (stall level), A9 | — | — |
@@ -156,7 +157,7 @@ Notes:
 
 | Code | Requirement | API shape (provider, `/api/circularity/v1`) | Owner | Reports | Unlocks alone | Plan conflict |
 | --- | --- | --- | --- | ---: | --- | --- |
-| A1 | Meals or transactions served | New entry type `meals_served` (count, `not_applicable`) per area/day; `/summary` returns per-meal intensity when present | Provider | 11 | B1, B9, B21, B44 | No (manual; POS stays external) |
+| A1 | Meals served (eligible transactions need a separate definition) | New entry type `meals_served` (count, `not_applicable`) per area/day; `/summary` returns per-meal intensity when present | Provider | 11 | B1, B9, B44; not B21 | No (manual; POS stays external) |
 | A2 | Food-waste category | `sub_type` on `food_waste`: `prep`, `unsold`, `plate`, `inedible` | Provider | 3 | B2, B5 | No |
 | A3 | Food-waste cause | `cause` on `food_waste`: `overproduction`, `spoilage`, `portion`, `customer_leftover`, `other` | Provider | 1 | B3 | No |
 | A4 | Packaging material | `sub_type` on `packaging_waste`: `paper`, `pet`, `pp`, `aluminium`, `glass`, `other` | Provider | 3 | B8 | No |
@@ -166,7 +167,7 @@ Notes:
 | A8 | Contamination / sorting inspection | New resource `/inspections`: stream, inspected kg, contaminant kg, correctly sorted kg | Provider | 4 | B14, B15 | No |
 | A9 | Area ↔ tenant | Opaque `party_ref` on `/areas` (no ERP join) | Provider | 3 | — | No |
 | A10 | Surplus redistribution | Destination `redistribution`; food `sub_type` `edible_surplus` | Provider | 1 | B6 | No |
-| A11 | Single-use items issued | New entry type `single_use_issued` (count) | Provider | 1 | — | No |
+| A11 | Single-use items issued — delivered locally in Phase 9 | New entry type `single_use_issued` (count) | Provider | 1 | — | No |
 | A12 | Water and energy | New entry types `water_m3`, `energy_kwh` | Provider | 2 | — | Outside FCI; supporting indicator |
 | A13 | Behaviour observations | New resource `/observations`: behaviour type, observed count, compliant count | Provider | 3 | B43 | No |
 
@@ -275,7 +276,7 @@ Phases 6–7 add one CMS page and change four production files: the existing nav
 
 The provider calculates optional area/date/branch breakdowns and overall totals from one grouped read. Period comparison uses two current reads; there is no frozen snapshot. Previous-only service failure preserves current data. Legacy or malformed grouped responses show unavailable, never an empty/zero report. No 366-day cap was introduced.
 
-Acceptance and runtime evidence: [Phases 6–7 qualification](evidence/circularity-reporting-2026-10-22.md). Phase 8 adds used cooking oil in five existing production files with no schema, dependency or asset changes. [Phase 8 acceptance](evidence/circularity-phase-8-2026-10-23.md) includes disposable HTTP/Egolite write and failure journeys plus read-only Circularity Human Test desktop/mobile verification. Later capabilities still require separate decisions.
+Acceptance and runtime evidence: [Phases 6–7 qualification](evidence/circularity-reporting-2026-10-22.md). Phase 8 adds used cooking oil in five existing production files with no schema, dependency or asset changes. [Phase 8 acceptance](evidence/circularity-phase-8-2026-10-23.md) includes disposable HTTP/Egolite write and failure journeys plus read-only Circularity Human Test desktop/mobile verification. Phase 9 adds single-use counts in five existing production files; [acceptance evidence](evidence/circularity-phase-9-2026-10-23.md), [phase contract](vmod-wesria-circularity-mvp-plan-2026-10-20.md#phase-9--single-use-items-issued-capture-and-reporting). Later capabilities still require separate decisions.
 
 ### Final product (from the RAI, FCI and OS27 sources)
 
@@ -290,6 +291,7 @@ Resolve business logic and user-flow questions with a human before each capabili
 | Later capability | Required decision before starting |
 | --- | --- |
 | Used cooking oil | Delivered in Phase 8: actual net kg at collector handover; separately weighed stall oil or one shared area for pooled oil; existing destinations, Unknown when unknown; known past handovers allowed. Existing food/mixed records exclude oil and remain unchanged. Strict six-metric provider/client compatibility and desktop/mobile acceptance passed locally. Independent version skew remains unsupported. |
+| Single-use items issued | Phase 9 rules confirmed: actual management tallies of included foodware pieces at first customer handover, non-overlapping area scope, gross count, known past entries and unchanged reusable history. Strict seven-metric compatibility and desktop/mobile acceptance passed locally; no avoided-item or savings claim. |
 | Categories, materials and causes | Define daily-total identity and how totals/components avoid double counting; preserve unclassified history. |
 | Meals and intensity | Define denominator, scope, operator and missing/zero handling. Meals do not substitute for eligible transactions or establish reuse penetration. |
 | Evidence and recovery | Define verification authority, proof requirements, collector/manifest semantics and corrections. Status labels alone cannot establish assurance or confidence. |

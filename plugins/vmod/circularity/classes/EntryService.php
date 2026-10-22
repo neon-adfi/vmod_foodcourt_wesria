@@ -18,6 +18,7 @@ class EntryService
         'used_cooking_oil' => ['label' => 'Used cooking oil', 'unit' => 'kg'],
         'reusable_issued' => ['label' => 'Reusable items issued', 'unit' => 'count'],
         'reusable_returned' => ['label' => 'Reusable items returned', 'unit' => 'count'],
+        'single_use_issued' => ['label' => 'Single-use items issued', 'unit' => 'count'],
     ];
     public const MODES = ['daily_total' => 'Daily total', 'individual' => 'Individual entries'];
     public const DESTINATIONS = [
@@ -169,7 +170,7 @@ class EntryService
         ])->validate();
         $count = self::TYPES[$data['measurement_type']]['unit'] === 'count';
         if (($data['destination'] === 'not_applicable') !== $count) {
-            throw ValidationException::withMessages(['destination' => $count ? 'Reusable counts use Not applicable.' : 'Choose a waste destination.']);
+            throw ValidationException::withMessages(['destination' => $count ? 'Item counts use Not applicable.' : 'Choose a waste destination.']);
         }
         $parts = explode('.', $data['quantity']);
         $data['quantity'] = (ltrim($parts[0], '0') ?: '0') . '.' . str_pad($parts[1] ?? '', 3, '0');

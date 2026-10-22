@@ -30,7 +30,7 @@ view = "overview"
     <div class="col-12 d-flex flex-wrap align-items-center gap-2">
         <span class="text-secondary small me-1">Quick range:</span>
         {% for range in ranges %}{% set current = filters.date_from == range.from and filters.date_to == range.to %}<a class="btn btn-sm {{ current ? 'btn-primary' : 'btn-outline-secondary' }}" href="/circularity?{{ filters|merge({date_from: range.from, date_to: range.to})|url_encode }}"{% if current %} aria-current="true"{% endif %}>{{ range.label }}</a>{% endfor %}
-        <span class="form-hint ms-md-auto mb-0">Dates include both endpoints · {{ summary.reporting_timezone }}. Destination applies to every total; reusable items use Not applicable.</span>
+        <span class="form-hint ms-md-auto mb-0">Dates include both endpoints · {{ summary.reporting_timezone }}. Destination applies to every total; item counts use Not applicable.</span>
     </div>
 </form></div></div>
 <div class="row row-cards mb-4">

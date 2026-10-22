@@ -4,7 +4,7 @@
 
 **Date:** 2026-10-20, Asia/Kuala_Lumpur.
 
-**Status:** Phases 1–8 complete locally; Reporting is merged/pushed in `a8c13a2`, with the All permitted courts fix in `8303df2`. Phase 8 is implemented and qualified locally, uncommitted; [acceptance evidence](evidence/circularity-phase-8-2026-10-23.md). Phases 6–7 accepted on 2026-10-22, with [reporting acceptance evidence](evidence/circularity-reporting-2026-10-22.md). See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md), [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md), [Phase 4 evidence](evidence/circularity-phase-4-2026-10-21.md) and [Phase 5 evidence](evidence/circularity-phase-5-2026-10-22.md). Phase 4 is included in baseline `7760e5a`. Phase 5 qualified independent provider extraction on 2026-10-22 and is included in the reporting baseline `c169d4d`. Actual hosting migration and deployment remain separately authorized.
+**Status:** Phases 1–9 complete locally; Reporting is merged/pushed in `a8c13a2`, with the All permitted courts fix in `8303df2`. Phase 8 is implemented, qualified and merged/pushed in `a32dac4`; Phase 9 is locally accepted and uncommitted ([evidence](evidence/circularity-phase-9-2026-10-23.md)); [acceptance evidence](evidence/circularity-phase-8-2026-10-23.md). Phases 6–7 accepted on 2026-10-22, with [reporting acceptance evidence](evidence/circularity-reporting-2026-10-22.md). See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md), [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md), [Phase 4 evidence](evidence/circularity-phase-4-2026-10-21.md) and [Phase 5 evidence](evidence/circularity-phase-5-2026-10-22.md). Phase 4 is included in baseline `7760e5a`. Phase 5 qualified independent provider extraction on 2026-10-22 and is included in the reporting baseline `c169d4d`. Actual hosting migration and deployment remain separately authorized.
 
 **Inspected baseline:** `cfe3812`, `/Users/stev/htdoc/vmod_wesria`.
 
@@ -110,6 +110,8 @@ Use `/circularity/reporting` for the native report selector, `/circularity` for 
 | 5 | Independent-hosting rehearsal | Complete locally |
 | 6 | Reporting navigation and equal-length period comparison | Complete locally |
 | 7 | Grouped reports and factual diagnostics | Complete locally |
+| 8 | Used cooking oil capture and reporting | Complete locally |
+| 9 | Single-use items issued capture and reporting | Complete locally |
 
 ### Phase 1 — Environment and API/access foundation
 
@@ -245,18 +247,37 @@ The user resolved all six business questions on 2026-10-23. [Grilled implementat
 
 **Gate:** Focused provider/bridge tests → real HTTP and Egolite desktop/390px mobile capture plus Overview/all four reports → owned aggregate suite and scoped lint. Reconcile exact oil quantities, zero/missing, edits/removals, scope, history and unavailable states; inspect screenshots and finish one TaskSpace once. No deployment.
 
-### Boundaries after Phase 8
+### Phase 9 — Single-use items issued capture and reporting
+
+**Status:** Implemented and accepted locally on 2026-10-23; [acceptance evidence](evidence/circularity-phase-9-2026-10-23.md). Uncommitted; no deployment.
+
+The user confirmed all seven business decisions. Append `single_use_issued` (label **Single-use items issued**, unit `count`) after the existing six metrics. Capture, Overview and the four Reporting views show raw whole-item totals only.
+
+- Count each container, bowl, plate, cup, lid, cutlery piece and straw separately at its first customer handover; exclude bags, napkins and sachets. Apply the same definition across courts.
+- Management enters actual recorded handover tallies using the handover date. Exclude purchases, internal transfers, pre-handover damage and inventory-derived estimates.
+- Attribute separately tallied stall or shared-service quantities without overlapping court totals or estimated stall allocation.
+- Record gross pieces first handed out: replacement pieces count, customer returns do not subtract, and reissuing the same piece does not count again. Correct tally mistakes with the existing edit workflow.
+- Allow known past counts/dates. Existing reusable records exclude single-use items and remain unchanged; no automatic backfill.
+- Reuse `not_applicable`, daily total as the default, individual non-overlapping tally portions, existing daily/mode identity, UUID/version protection, authorization and soft removal. No new item-category dimension or return workflow.
+- Five existing production files: EntryService, CircularityClient, Capture, entries template and Overview template. No schema, dependency, permission or asset changes. Existing provider summaries, reporting tables and count-driven JavaScript stay unchanged.
+- Require a matched seven-metric provider/connector; explicitly recognize all three count types and reject legacy/malformed support as unavailable. Preserve exact strings, zero and missing data. Do not derive items avoided, reuse penetration, inventory balance or savings.
+- Once this type has saved records, older six-type code is not a safe rollback target without a compatibility plan. Preserve those records; do not delete them to enable rollback.
+
+**Gate:** Existing focused provider/bridge tests → real HTTP and disposable Egolite CRUD, current/previous periods, all groups, filters and authorization/failure journeys → read-only Circularity Human Test desktop/390px capture, Overview and all four reports → owned aggregate suite and scoped lint. Inspect screenshots, require successful harness/browser exits, record source hashes/runtime and finish one TaskSpace once. Reuse existing tests and `tests/e2e/circularity-reporting.mjs`.
+
+### Boundaries after Phase 9
 
 | Later capability | Human decision required before implementation |
 | --- | --- |
 | Used cooking oil | Business rules confirmed for Phase 8 above; implementation, compatibility checks and local acceptance are complete |
+| Single-use items issued | Phase 9 rules confirmed above; categories, net returns, stock-derived estimates and avoided-item claims require separate decisions |
 | Categories/materials/causes | Daily-total identity, no totals/components double count, unclassified history |
 | Meals/intensity | Denominator, scope, operator, missing/zero handling; meals are not eligible transactions |
 | Evidence/recovery | Verification authority and proof; labels alone do not establish assurance/confidence |
 | Tenant mapping/ERP | Historical reassignment, source documents, units, corrections, idempotent API exchange |
 | Value/assets/FCI | Cost/baseline rules, asset lifecycle, scoring methodology; FCI last |
 
-Phases 1–8 are complete locally. Phase 8 remains uncommitted. Future commit/push, deployment and later phases require separate authorization. See the [requirements gap](circularity-requirements-gap-2026-10-22.md) for the original proposal mapping and these blocking decisions.
+Phases 1–8 are complete locally and merged/pushed. Phase 9 is complete locally and uncommitted. Future commit/push, deployment and later phases require separate authorization. See the [requirements gap](circularity-requirements-gap-2026-10-22.md) for the original proposal mapping and these blocking decisions.
 
 ## 4. Verification and review focus
 
@@ -301,3 +322,5 @@ Later score methodology, performance rates, evidence uploads, partner self-servi
 **2026-10-22 — Phases 6–7 accepted locally:** Baseline `c169d4d`, branch `codex/circularity-reporting`, uncommitted source hashes recorded in the browser evidence. Reporting adds native period/area/date/court reports in five production files, with no schema, dependency or asset changes. Phase 6 closed before grouped work. Final focused tests: 36/1,008; real HTTP pass; Egolite: seven groups, three real cached history returns, 13 inspected screenshots, zero runtime exceptions and successful harness exit. Aggregate: Vmod 107/1,986 plus five Core races; framework 425/2,287 with four existing SQLite skips. Scoped lint and one independent review/correction pass complete. [Evidence, source manifest, commands and limits](evidence/circularity-reporting-2026-10-22.md). TaskSpace 29 finished once, temporary runtime closed. Stop before later capability decisions; no commit, push or deployment.
 
 **2026-10-23 — Phase 8 accepted locally:** Baseline `8303df2`, branch `codex/circularity-phase8-oil`, uncommitted source hashes captured. Five production files add net-kg oil capture, operator guidance and six-metric reports; no schema/dependency/permission/asset changes. Focused 39/1,125; real HTTP/Egolite eight groups, three cached history returns, 26 inspected screenshots and harness exit 0. Circularity Human Test at `https://wesria.local.test` passed read-only capture/Overview/all four reports at desktop and 390px, with 12 inspected screenshots and no data/grant changes. TaskSpace 33 reused throughout and finished once. Aggregate: Vmod 110/2,103, five Core concurrency scenarios; framework 425/2,287 with four existing skips. Scoped lint and independent review pass. [Evidence and limits](evidence/circularity-phase-8-2026-10-23.md). No commit, push or deployment.
+
+**2026-10-23 — Phase 9 accepted locally:** Baseline `a32dac4`, branch `codex/circularity-phase9-single-use`; final source hashes recorded. Five production files add actual gross single-use handover counts, native guidance and strict seven-metric compatibility. Focused 41/1,261; real HTTP and Egolite 10 journey groups, three actual cached history returns, 41 inspected screenshots, no runtime errors and both runner/harness exit 0. Human Test read-only desktop/390px Overview, capture and all four reports passed with 12 inspected screenshots and unchanged records/grants. TaskSpace 37 finished once. Aggregate: Vmod 112/2,239 plus five Core races; framework 425/2,287 with four existing skips. Scoped lint and independent review/correction passed. [Evidence, harness corrections and limits](evidence/circularity-phase-9-2026-10-23.md). No commit, push or deployment.
