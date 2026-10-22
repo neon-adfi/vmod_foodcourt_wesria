@@ -4,7 +4,7 @@
 
 **Date:** 2026-10-20, Asia/Kuala_Lumpur.
 
-**Status:** Phases 1–4 complete locally. See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md), [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md) and [Phase 4 evidence](evidence/circularity-phase-4-2026-10-21.md). Phase 3 started from clean `main` at `2fe3953`; Git commit, merge and push were separately authorized after acceptance. Phase 4 qualified baseline `1937e16` on 2026-10-22; its changes remain uncommitted. Phase 5 remains not started.
+**Status:** Phases 1–5 complete locally. See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md), [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md), [Phase 4 evidence](evidence/circularity-phase-4-2026-10-21.md) and [Phase 5 evidence](evidence/circularity-phase-5-2026-10-22.md). Phase 4 is included in baseline `7760e5a`. Phase 5 qualified independent provider extraction on 2026-10-22; its scoped changes remain uncommitted. Actual hosting migration and deployment remain separately authorized.
 
 **Inspected baseline:** `cfe3812`, `/Users/stev/htdoc/vmod_wesria`.
 
@@ -107,7 +107,7 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 | 2 | End-to-end measurement capture and correction | Complete locally |
 | 3 | Live totals and completed frontend views | Complete locally |
 | 4 | Integrated MVP qualification | Complete locally |
-| 5 | Independent-hosting rehearsal | Not started |
+| 5 | Independent-hosting rehearsal | Complete locally |
 
 ### Phase 1 — Environment and API/access foundation
 
@@ -192,11 +192,11 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 
 **Produces:** Demonstrated independence of host, Core/ERP schema and frontend installation.
 
-- [ ] Use a disposable framework-only October instance and independently guarded test database containing framework/provider tables only. Retain the existing test guard; do not weaken it to accept arbitrary hosts/schemas. If the current owned disposable service/schema is reused, run this rehearsal serially with all other test processes stopped.
-- [ ] Install only the provider, then transfer circularity-owned tables/data and its migration state. Preserve source namespace, tenant/branch references, entry UUIDs, versions and soft-deleted rows. Leave source data intact.
-- [ ] Point the unchanged connector's configured URL at that API. Repeat the contract and principal frontend journeys with synthetic records.
-- [ ] Compare counts, IDs, current values and summaries, including mixed mode groups and removed-UUID rejection. Verify no query/import/file dependency on Core, ERP or the connector.
-- [ ] Document required credentials, TLS, framework/runtime prerequisites, storage/cache separation and migration state. Document a future cutover with write pause, backup, reconciliation and rollback accounting for any post-cutover writes.
+- [x] Use a disposable framework-only October instance and independently guarded test database containing framework/provider tables only. Retain the existing test guard; do not weaken it to accept arbitrary hosts/schemas. If the current owned disposable service/schema is reused, run this rehearsal serially with all other test processes stopped.
+- [x] Install only the provider, then transfer circularity-owned tables/data and its migration state. Preserve source namespace, tenant/branch references, entry UUIDs, versions and soft-deleted rows. Leave source data intact.
+- [x] Point the unchanged connector's configured URL at that API. Repeat the contract and principal frontend journeys with synthetic records.
+- [x] Compare counts, IDs, current values and summaries, including mixed mode groups and removed-UUID rejection. Verify no query/import/file dependency on Core, ERP or the connector.
+- [x] Document required credentials, TLS, framework/runtime prerequisites, storage/cache separation and migration state. Document a future cutover with write pause, backup, reconciliation and rollback accounting for any post-cutover writes.
 
 **Gate:** The same frontend works with the independent provider and reconciled data. Actual hosting migration remains separately authorized.
 
@@ -237,3 +237,5 @@ Keep one progress table above and append a compact evidence entry after each exe
 **2026-10-22 — Phase 4 accepted locally:** Docker recovered and all required qualification ran serially on PHP 8.2.34 / MySQL 8.0.46. Focused: 29 tests / 789 assertions; 15 observed Circularity races; standalone and browser HTTP pass. One egolite TaskSpace passed seven groups, five actual cached history returns, real committed/absent timeouts and revocation; 19 screenshots inspected, zero JavaScript exceptions. Core: 16/89; aggregate Vmod: 100/1,767 plus five Core concurrency scenarios; framework: 425/2,287 with four existing SQLite skips. Scoped checks and independent review pass. [Evidence, receipts, manifest and limits](evidence/circularity-phase-4-2026-10-21.md). Temporary runtime closed; changes delivered uncommitted. No push, deployment or Phase 5 work.
 
 Later score methodology, performance rates, evidence uploads, partner self-service and external integrations need separate specifications. Do not implement weights, denominators, accounting effects or environmental claims from assumptions.
+
+**2026-10-22 — Phase 5 accepted locally:** Baseline `7760e5a`; a physically separate guarded MySQL/October target loaded only Circularity. Exact transfer preserved 3 areas, 34 entries, IDs/UUIDs/versions/deleted rows and provider migration state; schema/index parity, migration no-op, unsafe-target/import rejection and native target HTTP pass. The unchanged connector passed four egolite groups, five actual history returns and 16 inspected screenshots with zero JavaScript exceptions. Source provider rows remained unchanged. Focused 29/789, ordinary HTTP, scoped checks and independent review pass; aggregate 100/1,767 plus five Core races and framework 425/2,287 with four existing SQLite skips. [Evidence, runtime identity, commands and limits](evidence/circularity-phase-5-2026-10-22.md). Temporary runtime closed; worktree preserved and seven files delivered uncommitted. No push, cutover or deployment.

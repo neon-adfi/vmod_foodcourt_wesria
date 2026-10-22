@@ -4,6 +4,14 @@
 // Test-only front controller and runner. Explicit guard precedes any application boot or writes.
 require __DIR__ . '/DatabaseGuard.php';
 \Vmod\Tests\DatabaseGuard::assertEnvironment();
+if (PHP_SAPI === 'cli') {
+    // October renders standalone console exceptions without guaranteeing a nonzero status.
+    register_shutdown_function(static function () {
+        if (empty($GLOBALS['circularityProofCompleted'])) {
+            exit(1);
+        }
+    });
+}
 require dirname(__DIR__, 2) . '/bootstrap/autoload.php';
 if (getenv('PLUGINS_PATH') === '/proof/plugins') {
     // PLUGINS_PATH changes discovery, but October's default autoloader still searches "plugins".
@@ -48,6 +56,11 @@ function proofHold(array $receipt, array $barrier): void
 
 if (PHP_SAPI === 'fpm-fcgi') {
     $request = \Illuminate\Http\Request::capture();
+    if (getenv('VMOD_EXTRACTED_PROOF') === 'true' && getenv('PLUGINS_PATH') === '/proof/plugins'
+        && is_file('/proof/source-frozen') && !in_array($request->method(), ['GET', 'HEAD'], true)) {
+        response()->json(['message' => 'Source paused for extraction proof.'], 503)->send();
+        return;
+    }
     if ($request->path() === '__nested') {
         $health = (new \Vmod\CircularityUi\Classes\CircularityClient)->health();
         response()->json(['nested' => $health['status'] === 'ok'])->send();
@@ -204,6 +217,10 @@ function browserControl(array $fixture, array $command): array
         }
     });
     checkCircularity(\Vmod\Core\Models\Membership::findOrFail($fixture['a']['member_id'])->isFullAdministrator(), 'Proof must preserve its administrator.');
+    if (getenv('VMOD_EXTRACTED_PROOF') === 'true') {
+        checkCircularity($command['action'] !== 'snapshot', 'Extracted snapshots must come from target CLI.');
+        return ['authorized' => true];
+    }
     return ['entries' => \Vmod\Circularity\Models\Entry::withTrashed()->where('source_namespace', 'wesria-proof')
         ->whereIn('tenant_ref', array_map(fn ($key) => (string) $fixture[$key]['company_id'], ['a', 'b']))
         ->get(['uuid', 'tenant_ref', 'branch_ref', 'area_id', 'measurement_date', 'measurement_type', 'mode', 'quantity', 'destination', 'version', 'deleted_at'])->toArray()];
@@ -354,6 +371,17 @@ try {
     echo "PASS: provider-only HTTP options, area CRUD, measurement CRUD, exact zero, replay, stale writes and removed-record isolation.\n";
     if (getenv('VMOD_BROWSER_PROOF') === 'true') {
         $fixture = browserFixture($http, $api);
+        if (getenv('VMOD_EXTRACTED_PROOF') === 'true') {
+            passthru('php tests/vmod/check-circularity-extraction.php export', $status);
+            checkCircularity($status === 0, 'Extraction export failed.');
+            file_put_contents('/proof/source-ready', 'ready');
+            $deadline = microtime(true) + 180;
+            while (!is_file('/proof/extracted-ready')) {
+                checkCircularity(microtime(true) < $deadline, 'Target import did not finish.');
+                clearstatcache();
+                usleep(50000);
+            }
+        }
         file_put_contents('/proof/ready', 'ready');
         echo "READY: native browser origin " . $fixture['base_url'] . "; private fixture in proof directory.\n";
         $deadline = microtime(true) + 7200;
@@ -369,9 +397,15 @@ try {
             usleep(50000);
         }
         checkCircularity(trim(file_get_contents('/proof/complete')) === 'pass', 'Browser qualification failed.');
+        if (getenv('VMOD_EXTRACTED_PROOF') === 'true') {
+            passthru('php tests/vmod/check-circularity-extraction.php source-check', $status);
+            checkCircularity($status === 0, 'Source preservation failed.');
+        }
         echo "PASS: browser qualification completed.\n";
     }
 } finally {
     proc_terminate($process, 3); // Native SIGQUIT: drain the test workers.
     proc_close($process);
 }
+
+$GLOBALS['circularityProofCompleted'] = true;

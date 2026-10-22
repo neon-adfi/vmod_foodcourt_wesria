@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 # Run serially after starting the owned mysql-test service. No development service is modified.
 set -euo pipefail
+if [ "${1:-}" = --extracted ] && [ "$#" -eq 1 ]; then
+    exec bash "$(dirname "${BASH_SOURCE[0]}")/check-circularity-extraction.sh"
+fi
 circularity_browser=false
 if [ "${1:-}" = --browser ] && [ "$#" -eq 1 ]; then
     circularity_browser=true
 elif [ "$#" -ne 0 ]; then
-    echo 'Usage: check-circularity-http.sh [--browser]' >&2
+    echo 'Usage: check-circularity-http.sh [--browser|--extracted]' >&2
     exit 2
 fi
 circularity_source="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -29,7 +32,7 @@ trap cleanup EXIT
 chmod 755 "$circularity_tmp"
 python3 - "$circularity_tmp" "$circularity_browser" <<'PY'
 from pathlib import Path
-import base64, hashlib, secrets, sys
+import base64, hashlib, os, secrets, sys
 p = Path(sys.argv[1])
 token = secrets.token_hex(32)
 browser = sys.argv[2] == 'true'
@@ -38,7 +41,8 @@ p.joinpath('private.env').write_text('\n'.join([
     'APP_DEBUG=false', 'CIRCULARITY_API_TOKEN=' + token,
     'CIRCULARITY_TOKEN_HASH=' + hashlib.sha256(token.encode()).hexdigest(),
     'CIRCULARITY_SOURCE_NAMESPACE=wesria-proof',
-    'CIRCULARITY_API_URL=http://nginx-tech/api/circularity/v1',
+    'CIRCULARITY_API_URL=http://nginx-tech' + (':8081' if os.getenv('VMOD_EXTRACTED_PROOF') == 'true' else '') + '/api/circularity/v1',
+    'VMOD_EXTRACTED_PROOF=' + os.getenv('VMOD_EXTRACTED_PROOF', 'false'),
     'CIRCULARITY_ALLOW_INTERNAL_HTTP=true',
     'CACHE_STORE=' + ('file' if browser else 'array'),
     'CACHE_DRIVER=' + ('file' if browser else 'array'),
@@ -79,6 +83,11 @@ p.joinpath('nginx.conf').write_text('''server {
 }
 ''')
 PY
+if [ "${VMOD_EXTRACTED_PROOF:-}" = true ]; then
+    cat "$VMOD_EXTRACTED_CONFIG" >> "$circularity_tmp/nginx.conf"
+    cp "$circularity_tmp/private.env" "$VMOD_EXTRACTED_HANDOFF/ui.env"
+    printf '%s' "$circularity_tmp" > "$VMOD_EXTRACTED_HANDOFF/source-dir"
+fi
 docker network inspect foodywesria_test >/dev/null
 circularity_nginx_image="$(docker inspect --format '{{.Image}}' foodywesria-nginx-tech-1)"
 # Resolve PHP upstream lazily: the PHP runner below is not started yet.
@@ -91,23 +100,45 @@ circularity_nginx_id="$(docker run -d --label vmod.circularity.proof=true \
 if [ "$circularity_browser" = true ]; then
     # Docker 29 does not publish ports on an internal-only network; only Nginx joins the host-facing bridge.
     docker network connect --alias nginx-tech foodywesria_test "$circularity_nginx_id"
+    if [ "${VMOD_EXTRACTED_PROOF:-}" = true ]; then docker network connect --alias nginx-tech "$VMOD_EXTRACTED_NETWORK" "$circularity_nginx_id"; fi
     circularity_port="$(docker port "$circularity_nginx_id" 80/tcp)"
     case "$circularity_port" in 127.0.0.1:*) ;; *) echo 'Proof origin must be loopback only.' >&2; exit 1 ;; esac
     printf 'APP_URL=http://%s\n' "$circularity_port" >> "$circularity_tmp/private.env"
     python3 - "$circularity_tmp" <<'PY'
 from pathlib import Path
-import json, sys
-p = Path('/private/tmp/wesria-circularity-phase4-runtime.json')
+import json, os, sys
+p = Path('/private/tmp/wesria-circularity-phase' + ('5' if os.getenv('VMOD_EXTRACTED_PROOF') == 'true' else '4') + '-runtime.json')
 p.write_text(json.dumps({'proof_dir': sys.argv[1]}))
 p.chmod(0o600)
 PY
     echo "Browser proof directory: $circularity_tmp"
 fi
-docker run --rm --network foodywesria_test --network-alias circularity-php \
-    --label vmod.circularity.proof=true \
+if [ "${VMOD_EXTRACTED_PROOF:-}" = true ]; then
+    for circularity_attempt in {1..180}; do
+        [ ! -f "$VMOD_EXTRACTED_HANDOFF/target-ready" ] || break
+        sleep 1
+    done
+    [ -f "$VMOD_EXTRACTED_HANDOFF/target-ready" ] || exit 1
+fi
+run_circularity_php() {
+    docker run "$@" --network foodywesria_test --network-alias circularity-php \
+    --label vmod.circularity.proof=true --tmpfs /var/www/html/storage \
     --env-file "$circularity_runtime/wesria-test.env" --env-file "$circularity_tmp/private.env" \
     -v "$circularity_source:/var/www/html:ro" \
     -v "$circularity_dependencies/vendor:/var/www/html/vendor:ro" \
     -v "$circularity_dependencies/plugins/rainlab/user:/var/www/html/plugins/rainlab/user:ro" \
     -v "$circularity_tmp:/proof" -w /var/www/html foodywesria-php-tech:phase1 \
-    php tests/vmod/check-circularity-http.php
+    sh -c 'mkdir -p storage/framework && php tests/vmod/check-circularity-http.php'
+}
+
+if [ "${VMOD_EXTRACTED_PROOF:-}" = true ]; then
+    circularity_php_result="$(run_circularity_php -d)"
+    printf '%s' "$circularity_php_result" > "$VMOD_EXTRACTED_HANDOFF/source-php"
+    docker logs -f "$circularity_php_result" &
+    circularity_log_pid=$!
+    circularity_exit="$(docker wait "$circularity_php_result")"
+    wait "$circularity_log_pid"
+    docker rm "$circularity_php_result" >/dev/null
+    exit "$circularity_exit"
+fi
+run_circularity_php --rm
