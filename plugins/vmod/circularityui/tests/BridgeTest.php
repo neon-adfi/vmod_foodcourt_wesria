@@ -383,6 +383,177 @@ class BridgeTest extends ApplicationTestCase
         $this->assertSame(['Choose an end date.'], $page['queryErrors']['date_to']);
     }
 
+    public function testGroupedSummaryRequiresRequestedDimensionUniqueKeysAndValidMetrics(): void
+    {
+        $this->acting($this->company());
+        foreach (['area' => '42', 'date' => '2026-01-01', 'branch' => 'Court-A'] as $dimension => $key) {
+            $valid = $this->summaryPayload();
+            $valid['group_by'] = $dimension;
+            $valid['groups'] = [['key' => $key, 'totals' => $valid['totals']]];
+            Http::swap(new Factory);
+            Http::fake(['*' => Http::response($valid)]);
+            $this->assertSame($valid, (new CircularityClient)->request('GET', '/summary', ['group_by' => $dimension]));
+            $invalid = [$this->summaryPayload(), array_replace($valid, ['group_by' => 'unexpected']),
+                array_replace($valid, ['groups' => [$valid['groups'][0], $valid['groups'][0]]]),
+                array_replace($valid, ['groups' => []])];
+            if ($dimension === 'date') {
+                foreach (['2025-12-31', '2026-02-01'] as $outside) {
+                    $bad = $valid;
+                    $bad['groups'][0]['key'] = $outside;
+                    $invalid[] = $bad;
+                }
+            }
+            foreach ([['groups.0.key', 42], ['groups.0.key', ''], ['groups.0.totals.food_waste.quantity', 1.25],
+                ['groups.0.totals.packaging_waste.quantity', '0.000']] as [$path, $value]) {
+                $bad = $valid;
+                \Illuminate\Support\Arr::set($bad, $path, $value);
+                $invalid[] = $bad;
+            }
+            foreach ($invalid as $payload) {
+                Http::swap(new Factory);
+                Http::fake(['*' => Http::response($payload)]);
+                $this->denied(fn () => (new CircularityClient)->request('GET', '/summary', ['group_by' => $dimension]), 503);
+            }
+        }
+    }
+
+    public function testGroupedReportingKeepsInactiveHistoryAndScopesEmptyAreaRowsAndDailyLinks(): void
+    {
+        $company = $this->company();
+        $this->acting($company);
+        $areas = [];
+        foreach ([42 => false, 43 => true, 44 => false] as $id => $active) {
+            $areas[] = ['id' => $id, 'branch_ref' => (string) $company['branch']->id, 'name' => 'Area ' . $id,
+                'kind' => 'stall', 'version' => 1, 'is_active' => $active];
+        }
+        $page = $this->reportingPage(['report' => 'area'], 200, $areas);
+        $this->assertTrue(isset($page['reportRows']), 'Area reporting must render grouped rows.');
+        $rows = array_column($page['reportRows'], null, 'key');
+        $this->assertSame(['42', '43'], array_column($page['reportRows'], 'key'));
+        $this->assertSame('1999999999999.998', $rows['42']['totals']['food_waste']['quantity']);
+        $this->assertSame([], $rows['43']['totals']);
+        $this->assertStringContainsString('area_id=42', $rows['42']['links']['food_waste']['total']);
+        Http::assertSentCount(3);
+        $page = $this->reportingPage(['report' => 'daily', 'date_from' => '2024-01-01', 'date_to' => '2026-01-31']);
+        $this->assertCount(1, $page['reportRows']);
+        $this->assertSame('2026-01-01', $page['reportRows'][0]['key']);
+        $link = $page['reportRows'][0]['links']['food_waste']['total'];
+        $this->assertStringContainsString('date_from=2026-01-01', $link);
+        $this->assertStringContainsString('date_to=2026-01-01', $link);
+        $this->assertStringNotContainsString('group_by=', $link);
+        $this->assertStringNotContainsString('report=', $link);
+        Http::assertSentCount(3);
+    }
+
+    public function testAreaReportDistinguishesSameNamedAreasAcrossCourts(): void
+    {
+        $company = $this->company();
+        $other = Branch::create(['company_id' => $company['company']->id, 'name' => 'Court B']);
+        $company['membership']->branches()->attach($other->id);
+        $this->acting($company, false);
+        $areas = [];
+        foreach ([42 => $company['branch']->id, 43 => $other->id] as $id => $branch) {
+            $areas[] = ['id' => $id, 'branch_ref' => (string) $branch, 'name' => 'Stall 1',
+                'kind' => 'stall', 'version' => 1, 'is_active' => true];
+        }
+        $page = $this->reportingPage(['report' => 'area'], 200, $areas);
+        $this->assertStringContainsString('Court A', $page['reportRows'][0]['label']);
+        $this->assertStringContainsString('Court B', $page['reportRows'][1]['label']);
+        $html = (new \Cms\Classes\Controller)->run('/circularity/reporting')->getContent();
+        $this->assertStringContainsString('Stall 1 · Court A</option>', $html);
+        $this->assertStringContainsString('Stall 1 · Court B</option>', $html);
+    }
+
+    public function testGroupedTableKeepsMetricColumnsWhenProviderObjectKeysAreReordered(): void
+    {
+        $this->acting($this->company());
+        $this->reportingPage(['report' => 'daily'], 200, [], true);
+        $html = (new \Cms\Classes\Controller)->run('/circularity/reporting')->getContent();
+        $document = new \DOMDocument;
+        @$document->loadHTML($html);
+        $cells = (new \DOMXPath($document))->query('//tr[@data-report-key="2026-01-01"]/td');
+        $this->assertSame('food_waste', $cells->item(0)->getAttribute('data-report-type'));
+        $this->assertSame('1999999999999.998', trim($cells->item(0)->textContent));
+        $this->assertSame('reusable_returned', $cells->item(4)->getAttribute('data-report-type'));
+    }
+
+    private function reportingPage(array $query = [], int $comparisonStatus = 200, array $areas = [], bool $reorder = false): \ArrayObject
+    {
+        $types = [];
+        foreach ($this->summaryPayload()['totals'] as $type => $total) {
+            $types[$type] = ['label' => $type, 'unit' => $total['unit']];
+        }
+        $summaryCalls = 0;
+        Http::swap(new Factory);
+        Http::fake(function ($request) use ($types, $comparisonStatus, $areas, $reorder, &$summaryCalls) {
+            $path = parse_url($request->url(), PHP_URL_PATH);
+            if (str_ends_with($path, '/options')) {
+                return Http::response(['types' => $types, 'destinations' => ['composting' => 'Composting'],
+                    'modes' => ['daily_total' => 'Daily total'], 'today' => '2026-01-31',
+                    'reporting_timezone' => 'Asia/Kuala_Lumpur']);
+            }
+            if (str_ends_with($path, '/areas')) {
+                return Http::response(['areas' => $areas]);
+            }
+            if (str_ends_with($path, '/summary')) {
+                $payload = $this->summaryPayload();
+                $payload['filters'] = array_replace($payload['filters'], array_diff_key($request->data(), ['group_by' => true]));
+                if (isset($request['group_by'])) {
+                    $payload['group_by'] = $request['group_by'];
+                    $payload['groups'] = [['key' => $request['group_by'] === 'date' ? '2026-01-01' : '42',
+                        'totals' => $reorder ? array_reverse($payload['totals'], true) : $payload['totals']]];
+                }
+                return Http::response($payload, ++$summaryCalls === 1 ? 200 : $comparisonStatus);
+            }
+            return Http::response(['data' => [], 'current_page' => 1, 'last_page' => 1, 'per_page' => 25, 'total' => 0]);
+        });
+        \Request::instance()->setMethod('GET');
+        \Request::instance()->query->replace($query);
+        $page = new \ArrayObject(['controller' => new \Cms\Classes\Controller], \ArrayObject::ARRAY_AS_PROPS);
+        (new \Vmod\CircularityUi\Components\Capture($page, ['view' => 'reporting']))->onRun();
+        return $page;
+    }
+
+    public function testReportingComparesInclusivePeriodsAndKeepsDrilldownsScoped(): void
+    {
+        $this->acting($this->company());
+        foreach ([
+            [[], '2025-12-01', '2025-12-31'],
+            [['date_from' => '2024-03-01', 'date_to' => '2024-03-01'], '2024-02-29', '2024-02-29'],
+            [['date_from' => '2026-01-01', 'date_to' => '2026-01-01'], '2025-12-31', '2025-12-31'],
+            [['date_from' => '2024-02-28', 'date_to' => '2024-03-01'], '2024-02-25', '2024-02-27'],
+        ] as [$query, $from, $to]) {
+            $page = $this->reportingPage($query + ['report' => 'period', 'destination' => 'composting']);
+            $this->assertTrue(isset($page['comparison']), 'Reporting must load a comparison, not the entry list.');
+            $this->assertSame($from, $page['comparison']['filters']['date_from']);
+            $this->assertSame($to, $page['comparison']['filters']['date_to']);
+            $this->assertSame('1999999999999.998', $page['summary']['totals']['food_waste']['quantity']);
+            $this->assertNull($page['comparison']['totals']['packaging_waste']['quantity']);
+            $link = $page['comparisonLinks']['food_waste']['total'];
+            $this->assertStringContainsString('date_from=' . $from, $link);
+            $this->assertStringContainsString('destination=composting', $link);
+            $this->assertStringNotContainsString('report=', $link);
+            Http::assertSentCount(4);
+        }
+        $page = $this->reportingPage(['report' => 'invalid']);
+        $this->assertArrayHasKey('report', $page['queryErrors']);
+        Http::assertNothingSent();
+    }
+
+    public function testReportingKeepsCurrentTotalsOnlyOnComparisonServiceFailure(): void
+    {
+        $this->acting($this->company());
+        foreach ([429, 503] as $status) {
+            $page = $this->reportingPage([], $status);
+            $this->assertTrue($page['comparisonUnavailable'] ?? false);
+            $this->assertFalse(isset($page['circularityUnavailable']));
+            $this->assertSame('1999999999999.998', $page['summary']['totals']['food_waste']['quantity']);
+        }
+        foreach ([403, 404] as $status) {
+            $this->denied(fn () => $this->reportingPage([], $status), $status);
+        }
+    }
+
     public function testUnavailableOverviewRendersTheNativeWarningWithoutTotals(): void
     {
         $this->acting($this->company());

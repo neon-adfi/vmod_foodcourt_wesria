@@ -356,6 +356,18 @@ try {
         && $summary->json('totals.packaging_waste.quantity') === null
         && $summary->json('totals.reusable_issued.quantity') === '8'
         && $summary->json('totals.reusable_returned.quantity') === '12', 'HTTP summary reconciliation failed.');
+    foreach (['area' => (string) $area['id'], 'date' => '2026-01-01', 'branch' => 'court-a'] as $groupBy => $key) {
+        $grouped = $http->get($api . '/summary', $range + ['group_by' => $groupBy]);
+        checkCircularity($grouped->status() === 200 && $grouped->json('group_by') === $groupBy
+            && $grouped->json('groups') === [['key' => $key, 'totals' => $summary->json('totals')]]
+            && $grouped->json('filters') === $summary->json('filters')
+            && $grouped->json('totals') === $summary->json('totals'), 'HTTP grouped summary failed: ' . $groupBy);
+    }
+    checkCircularity(
+        $http->get($api . '/summary', $range + ['group_by' => 'unsupported'])->status() === 422,
+        'HTTP invalid grouping accepted.'
+    );
+    echo "PASS: optional area/date/branch grouping reconciles to the legacy summary over HTTP.\n";
     checkCircularity($http->get($api . '/summary', $range + ['destination' => 'composting'])
         ->json('totals.reusable_returned.quantity') === null, 'HTTP destination filter did not apply uniformly.');
     checkCircularity($http->get($api . '/summary', ['date_from' => '2026-01-01'])->status() === 422, 'HTTP incomplete range accepted.');

@@ -36,6 +36,9 @@ class Capture extends \Cms\Classes\ComponentBase
             'measurement_type' => 'nullable|string|in:food_waste,packaging_waste,mixed_waste,reusable_issued,reusable_returned',
             'destination' => 'nullable|string|in:unknown,landfill,incineration,recycling,composting,anaerobic_digestion,animal_feed,other,not_applicable',
             'page' => 'nullable|integer|min:1|max:1000000'];
+        if ($this->property('view') === 'reporting') {
+            $rules['report'] = 'nullable|in:period,area,daily,court';
+        }
         $validator = \Validator::make(get(), $rules);
         $validator->after(function ($validator) {
             // Compare only validated dates; Laravel's cross-field date rule can throw on array input.
@@ -72,6 +75,48 @@ class Capture extends \Cms\Classes\ComponentBase
                 $area = empty($filters['id']) ? null : collect($areas)->firstWhere('id', (int) $filters['id']);
                 abort_if(!empty($filters['id']) && !$area, 404);
                 $this->page['area'] = $area;
+                return;
+            }
+            if ($this->property('view') === 'reporting') {
+                $report = $filters['report'] ?? 'period';
+                $this->page['reportOptions'] = ['period' => 'Period comparison', 'area' => 'Area / stall breakdown',
+                    'daily' => 'Daily trend', 'court' => 'Court comparison'];
+                $scope = array_intersect_key($filters, array_flip([
+                    'branch_ref', 'area_id', 'measurement_date', 'date_from', 'date_to', 'measurement_type', 'destination',
+                ]));
+                $groupBy = ['area' => 'area', 'daily' => 'date', 'court' => 'branch'][$report] ?? null;
+                $summary = $client->request('GET', '/summary', $groupBy ? $scope + ['group_by' => $groupBy] : $scope, $branch);
+                $scope = $summary['filters'];
+                if ($branch !== null && $branch !== '') {
+                    $scope['branch_ref'] = $branch;
+                }
+                $this->page['report'] = $report;
+                $this->page['filters'] = $scope;
+                $this->page['summary'] = $summary;
+                $this->page['summaryLinks'] = $this->summaryLinks($summary, $scope);
+                if ($groupBy) {
+                    $this->page['reportRows'] = $this->reportingRows($summary, $scope, $report);
+                    return;
+                }
+                $timezone = new \DateTimeZone($summary['reporting_timezone']);
+                $from = new \DateTimeImmutable($scope['date_from'], $timezone);
+                $to = new \DateTimeImmutable($scope['date_to'], $timezone);
+                $days = $from->diff($to)->days + 1;
+                $previous = array_replace($scope, [
+                    'date_from' => $from->sub(new \DateInterval('P' . $days . 'D'))->format('Y-m-d'),
+                    'date_to' => $from->sub(new \DateInterval('P1D'))->format('Y-m-d'),
+                ]);
+                // Two live reads: keep the saved measurements editable; no frozen comparison snapshot.
+                try {
+                    $comparison = $client->request('GET', '/summary', $previous, $branch);
+                    $this->page['comparison'] = $comparison;
+                    $this->page['comparisonLinks'] = $this->summaryLinks($comparison, $previous);
+                } catch (HttpExceptionInterface $exception) {
+                    if (!in_array($exception->getStatusCode(), [429, 503], true)) {
+                        throw $exception;
+                    }
+                    $this->page['comparisonUnavailable'] = true;
+                }
                 return;
             }
             if ($this->property('view') === 'overview') {
@@ -142,6 +187,61 @@ class Capture extends \Cms\Classes\ComponentBase
         $values = array_replace(array_fill_keys(array_keys($errors), ''), get());
         $this->page['queryValues'] = array_map(fn ($value) => is_scalar($value) ? (string) $value : '', array_intersect_key($values, $rules));
         $this->page['queryPath'] = \Request::url();
+    }
+
+    private function summaryLinks(array $summary, array $scope): array
+    {
+        $links = [];
+        foreach ($summary['totals'] as $type => $total) {
+            $typeScope = array_replace($scope, ['measurement_type' => $type]);
+            $links[$type]['total'] = '/circularity/entries?' . http_build_query($typeScope);
+            foreach ($total['destinations'] as $row) {
+                $links[$type]['destinations'][$row['destination']] = '/circularity/entries?'
+                    . http_build_query(array_replace($typeScope, ['destination' => $row['destination']]));
+            }
+        }
+        return $links;
+    }
+
+    private function reportingRows(array $summary, array $scope, string $report): array
+    {
+        $groups = array_column($summary['groups'], 'totals', 'key');
+        $labels = [];
+        if ($report === 'area') {
+            foreach ($this->page['areas'] as $area) {
+                if ((!empty($scope['area_id']) && (string) $area['id'] !== (string) $scope['area_id'])
+                    || (!empty($scope['branch_ref']) && $area['branch_ref'] !== $scope['branch_ref'])) {
+                    continue;
+                }
+                if ($area['is_active'] || isset($groups[$area['id']])) {
+                    $labels[$area['id']] = $area['name'] . ' · ' . $this->page['courtNames'][$area['branch_ref']]
+                        . ($area['is_active'] ? '' : ' (inactive)');
+                }
+            }
+        } elseif ($report === 'court') {
+            $area = empty($scope['area_id']) ? null : collect($this->page['areas'])->firstWhere('id', (int) $scope['area_id']);
+            foreach ($this->page['courtNames'] as $key => $name) {
+                if ((!empty($scope['branch_ref']) && (string) $key !== $scope['branch_ref'])
+                    || ($area && (string) $key !== $area['branch_ref'])) {
+                    continue;
+                }
+                $labels[$key] = $name;
+            }
+        } else {
+            $labels = array_combine(array_keys($groups), array_keys($groups));
+        }
+        // Metadata and totals are separate reads: retry if a concurrent area change left a group without a scoped label.
+        abort_if(array_diff_key($groups, $labels), 503);
+        $rows = [];
+        foreach ($labels as $key => $label) {
+            $rowScope = array_replace($scope, $report === 'daily'
+                ? ['date_from' => (string) $key, 'date_to' => (string) $key]
+                : [$report === 'area' ? 'area_id' : 'branch_ref' => (string) $key]);
+            $totals = $groups[$key] ?? [];
+            $rows[] = ['key' => (string) $key, 'label' => $label, 'totals' => $totals,
+                'links' => $this->summaryLinks(['totals' => $totals], $rowScope)];
+        }
+        return $rows;
     }
 
     public function onSaveArea()

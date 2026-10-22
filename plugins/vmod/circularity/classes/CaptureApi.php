@@ -94,6 +94,8 @@ class CaptureApi
 
     public function summary(Request $request)
     {
+        $groupBy = Validator::make($request->all(), ['group_by' => 'sometimes|required|string|in:area,date,branch'])
+            ->validate()['group_by'] ?? null;
         $filters = $this->entryFilters($request);
         unset($filters['page']);
         $timezone = config('vmod.circularity::api.reporting_timezone');
@@ -105,25 +107,49 @@ class CaptureApi
             $filters['date_from'] = $today->format('Y-m-01');
             $filters['date_to'] = $today->format('Y-m-d');
         }
-        $rows = $this->filteredEntries($request, $filters)
+        $query = $this->filteredEntries($request, $filters)
             ->selectRaw('measurement_type, destination, SUM(quantity) AS quantity, COUNT(*) AS entry_count')
-            ->groupBy('measurement_type', 'destination')->orderBy('measurement_type')->orderBy('destination')->get();
+            ->groupBy('measurement_type', 'destination')->orderBy('measurement_type')->orderBy('destination');
+        if ($groupBy !== null) {
+            $column = ['area' => 'area_id', 'date' => 'measurement_date', 'branch' => 'branch_ref'][$groupBy];
+            $query->addSelect($column . ' as group_key')->groupBy($column)->orderBy($column);
+        }
+        // One grouped read keeps the grand total and every breakdown on the same database snapshot.
+        $rows = $query->get();
+        $result = ['filters' => $filters, 'reporting_timezone' => $timezone, 'totals' => $this->summaryTotals($rows)];
+        if ($groupBy !== null) {
+            $result['group_by'] = $groupBy;
+            $result['groups'] = [];
+            foreach ($rows->groupBy('group_key')->sortKeys(SORT_STRING) as $key => $group) {
+                $result['groups'][] = ['key' => (string) $key, 'totals' => $this->summaryTotals($group)];
+            }
+        }
+        return response()->json($result);
+    }
+
+    private function summaryTotals(iterable $rows): array
+    {
         $totals = [];
         foreach (EntryService::TYPES as $type => $definition) {
             $totals[$type] = ['unit' => $definition['unit'], 'quantity' => null, 'entry_count' => 0, 'destinations' => []];
         }
-        // One grouped read keeps each total and its breakdown on the same database snapshot.
         foreach ($rows as $row) {
             $total = &$totals[$row->measurement_type];
             $scale = $total['unit'] === 'kg' ? 3 : 0;
             $quantity = (string) BigDecimal::of($row->quantity)->toScale($scale);
             $total['quantity'] = (string) BigDecimal::of($total['quantity'] ?? '0')->plus($quantity)->toScale($scale);
             $total['entry_count'] += (int) $row->entry_count;
-            $total['destinations'][] = ['destination' => $row->destination,
-                'quantity' => $quantity, 'entry_count' => (int) $row->entry_count];
+            $destination = &$total['destinations'][$row->destination];
+            $destination = ['destination' => $row->destination,
+                'quantity' => (string) BigDecimal::of($destination['quantity'] ?? '0')->plus($quantity)->toScale($scale),
+                'entry_count' => ($destination['entry_count'] ?? 0) + (int) $row->entry_count];
+            unset($destination);
             unset($total);
         }
-        return response()->json(['filters' => $filters, 'reporting_timezone' => $timezone, 'totals' => $totals]);
+        foreach ($totals as &$total) {
+            $total['destinations'] = array_values($total['destinations']);
+        }
+        return $totals;
     }
 
     private function entryFilters(Request $request): array

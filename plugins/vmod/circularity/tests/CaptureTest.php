@@ -170,6 +170,48 @@ class CaptureTest extends ApplicationTestCase
         $this->assertSame('1999999999998', $totals['reusable_issued']['quantity']);
     }
 
+    public function testGroupedSummariesReconcileAcrossAreasDatesAndCourtsWithoutChangingLegacyResponses(): void
+    {
+        $area = $this->area();
+        $other = $this->area('Stall B', 'Court-B');
+        $entry = $this->api('POST', '/entries', $this->measurement($area, ['quantity' => '10.125']), 201)['entry'];
+        $this->api('POST', '/entries', $this->measurement($area, ['quantity' => '2', 'destination' => 'unknown']), 201);
+        $this->api('POST', '/entries', $this->measurement($area, ['measurement_type' => 'packaging_waste', 'quantity' => '0']), 201);
+        $this->api('POST', '/entries', $this->measurement($other, ['quantity' => '3.500', 'measurement_date' => '2026-01-02']), 201);
+        $this->api('PATCH', '/areas/' . $area['id'], ['version' => 1, 'is_active' => false]);
+        $range = ['date_from' => '2024-01-01', 'date_to' => '2026-01-31'];
+        $legacy = $this->api('GET', '/summary', $range);
+        $this->assertSame(['filters', 'reporting_timezone', 'totals'], array_keys($legacy));
+        foreach (['area' => [(string) $area['id'], (string) $other['id']],
+            'date' => ['2026-01-01', '2026-01-02'], 'branch' => ['Court-A', 'Court-B']] as $dimension => $keys) {
+            $summary = $this->api('GET', '/summary', $range + ['group_by' => $dimension]);
+            $this->assertSame($dimension, $summary['group_by'] ?? null, 'Grouping must be returned explicitly.');
+            $this->assertSame($legacy, array_diff_key($summary, ['group_by' => true, 'groups' => true]));
+            $this->assertEqualsCanonicalizing($keys, array_column($summary['groups'], 'key'));
+            $groups = array_column($summary['groups'], 'totals', 'key');
+            $this->assertSame('12.125', $groups[$keys[0]]['food_waste']['quantity']);
+            $this->assertSame('3.500', $groups[$keys[1]]['food_waste']['quantity']);
+            $this->assertSame('0.000', $groups[$keys[0]]['packaging_waste']['quantity']);
+            $this->assertNull($groups[$keys[1]]['packaging_waste']['quantity']);
+            $this->assertSame('15.625', $summary['totals']['food_waste']['quantity']);
+            $this->assertSame('13.625', $summary['totals']['food_waste']['destinations'][0]['quantity']);
+        }
+        $this->api('PATCH', '/entries/' . $entry['uuid'], ['version' => 1, 'quantity' => '4.125']);
+        $this->assertSame('9.625', $this->api('GET', '/summary', $range + ['group_by' => 'area'])['totals']['food_waste']['quantity']);
+        $this->api('DELETE', '/entries/' . $entry['uuid'], ['version' => 2]);
+        $this->context['branch_refs'] = ['Court-A'];
+        $summary = $this->api('GET', '/summary', $range + ['group_by' => 'branch']);
+        $this->assertSame(['Court-A'], array_column($summary['groups'], 'key'));
+        $this->assertSame('2.000', $summary['totals']['food_waste']['quantity']);
+        $empty = $this->api('GET', '/summary', $range + ['group_by' => 'date', 'destination' => 'landfill']);
+        $this->assertSame([], $empty['groups']);
+        $this->assertNull($empty['totals']['food_waste']['quantity']);
+        $this->api('GET', '/summary', $range + ['group_by' => 'area', 'area_id' => $other['id']], 404);
+        foreach (['quantity', 'area_id', ['area'], 'branch_ref; DROP TABLE entries'] as $invalid) {
+            $this->api('GET', '/summary', $range + ['group_by' => $invalid], 422);
+        }
+    }
+
     public function testSummaryAndRangesRetainScopeDenialsAndEmptyIntersections(): void
     {
         $area = $this->area();

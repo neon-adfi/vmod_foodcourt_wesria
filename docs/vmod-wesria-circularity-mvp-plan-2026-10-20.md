@@ -4,7 +4,7 @@
 
 **Date:** 2026-10-20, Asia/Kuala_Lumpur.
 
-**Status:** Phases 1–5 complete locally. See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md), [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md), [Phase 4 evidence](evidence/circularity-phase-4-2026-10-21.md) and [Phase 5 evidence](evidence/circularity-phase-5-2026-10-22.md). Phase 4 is included in baseline `7760e5a`. Phase 5 qualified independent provider extraction on 2026-10-22; its scoped changes remain uncommitted. Actual hosting migration and deployment remain separately authorized.
+**Status:** Phases 1–7 complete locally; Phases 6–7 accepted on 2026-10-22, with [reporting acceptance evidence](evidence/circularity-reporting-2026-10-22.md). See [Phase 2 evidence](evidence/circularity-phase-2-2026-10-20.md), [Phase 3 evidence](evidence/circularity-phase-3-2026-10-21.md), [Phase 4 evidence](evidence/circularity-phase-4-2026-10-21.md) and [Phase 5 evidence](evidence/circularity-phase-5-2026-10-22.md). Phase 4 is included in baseline `7760e5a`. Phase 5 qualified independent provider extraction on 2026-10-22 and is included in the reporting baseline `c169d4d`. Actual hosting migration and deployment remain separately authorized.
 
 **Inspected baseline:** `cfe3812`, `/Users/stev/htdoc/vmod_wesria`.
 
@@ -97,7 +97,7 @@ Use native plugin `routes.php` and a small concrete HTTP client; no SDK, reposit
 
 Use one native capture form for both modes, with date, area, measurement type, input mode, destination where applicable, quantity, optional reference and notes. Show the active group's mode; disable changing it while active entries exist and explain that removal is required to switch. Values remain editable.
 
-Use `/circularity` for the live overview, `/circularity/entries` for capture/list/edit and `/circularity/areas` for area management. Reuse the existing layout, validation, focus/error handling, workspace-switch recovery and protected-history behavior. Do not build a second recovery framework. Require confirmation only for removal, not ordinary saves.
+Use `/circularity/reporting` for the native report selector, `/circularity` for the live overview, `/circularity/entries` for capture/list/edit and `/circularity/areas` for area management. Reuse the existing layout, validation, focus/error handling, workspace-switch recovery and protected-history behavior. Do not build a second recovery framework. Require confirmation only for removal, not ordinary saves.
 
 ## 3. Implementation phases
 
@@ -108,6 +108,8 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 | 3 | Live totals and completed frontend views | Complete locally |
 | 4 | Integrated MVP qualification | Complete locally |
 | 5 | Independent-hosting rehearsal | Complete locally |
+| 6 | Reporting navigation and equal-length period comparison | Complete locally |
+| 7 | Grouped reports and factual diagnostics | Complete locally |
 
 ### Phase 1 — Environment and API/access foundation
 
@@ -200,6 +202,49 @@ Use `/circularity` for the live overview, `/circularity/entries` for capture/lis
 
 **Gate:** The same frontend works with the independent provider and reconciled data. Actual hosting migration remains separately authorized.
 
+### Phase 6 — Reporting and period comparison
+
+**Files/responsibility:** Extend the existing navigation map and Capture component; add `themes/vmod/pages/circularity-reporting.htm`. Keep Overview unchanged. Reuse `circularity.read`, scoped area/court metadata, native GET filters, record drilldowns and existing history recovery.
+
+- Reporting follows Overview on desktop/mobile. Default report is Period comparison; default range is month-to-date in the provider reporting timezone.
+- For inclusive N-day range, previous end = current start − 1 day; previous start = current start − N days. Keep existing range validation; no arbitrary 366-day cap.
+- Show all five exact metrics with period dates. Preserve recorded zero and missing data; do not add percentages or performance claims. Two independent current reads, no snapshot or locking mechanism.
+- A previous-only 429/503 leaves current results visible with an unavailable warning. Authorization/workspace failures retain existing denial behavior. Drilldowns contain only supported measurement filters.
+
+**Gate:** Focused inclusive/leap/year tests and real HTTP/Egolite navigation, both-period record reconciliation and mobile inspection pass before Phase 7.
+
+### Phase 7 — Grouped reports and factual diagnostics
+
+**Files/responsibility:** Extend the same page/component, CaptureApi and CircularityClient. Across Phases 6–7: four existing production files and one new CMS page; no schema, permission, dependency, CSS or JavaScript change.
+
+| Report selector | Provider reads |
+| --- | --- |
+| Period comparison | Two `/summary` calls |
+| Area / stall breakdown | `/summary?group_by=area` |
+| Daily trend | `/summary?group_by=date` |
+| Court comparison | `/summary?group_by=branch` |
+
+- Grouping is optional, outside `filters`. Legacy requests keep their existing response. Grouped responses add top-level `group_by` and `groups: [{key: string, totals: existing five-metric shape}]`.
+- Map the three allowed values to fixed SQL columns. Build on the existing authorized filtered query. Derive every group and grand total from the same grouped read with existing exact-decimal arithmetic.
+- Client validates requested dimension, unique/valid keys, metric shapes and count reconciliation. An older provider silently ignoring grouping is unavailable, never an empty report.
+- Labels come from scoped areas and authorized Core branches. Retain inactive-area history. Active areas/permitted courts without entries say "No matching records for these filters." Daily rows include recorded dates only.
+- Reuse recorded-destination and mixed-waste drilldowns. No area-by-day grid, missed-collection inference, normalized ranking or score.
+
+**Gate:** Focused provider/bridge tests → actual HTTP/Egolite acceptance → owned aggregate suite and scoped lint. The focused runner is `tests/e2e/circularity-reporting.mjs`, using the existing guarded disposable runtime and one TaskSpace. Include create/edit/remove, zero/missing/independent counts, filters/reset/refresh/drilldowns, read-only/denial/foreign-court/workspace scope, actual revoked Back/Forward, real unavailability, keyboard and inspected desktop/390px screenshots. Record revision and runtime; harness must exit successfully.
+
+### Stop before subsequent capabilities
+
+| Later capability | Human decision required before implementation |
+| --- | --- |
+| Used cooking oil | Actual kg measurement and coordinated type compatibility |
+| Categories/materials/causes | Daily-total identity, no totals/components double count, unclassified history |
+| Meals/intensity | Denominator, scope, operator, missing/zero handling; meals are not eligible transactions |
+| Evidence/recovery | Verification authority and proof; labels alone do not establish assurance/confidence |
+| Tenant mapping/ERP | Historical reassignment, source documents, units, corrections, idempotent API exchange |
+| Value/assets/FCI | Cost/baseline rules, asset lifecycle, scoring methodology; FCI last |
+
+Phases 6–7 end the selected work. Commit, push, deployment and later phases require separate authorization. See the [requirements gap](circularity-requirements-gap-2026-10-22.md) for the original proposal mapping and these blocking decisions.
+
 ## 4. Verification and review focus
 
 Use the owned PHP 8.2 test container and guarded disposable MySQL. Plugin tests extend `Vmod\Tests\ApplicationTestCase` during colocated acceptance; standalone-provider boot checks must also prove Core/ERP are unavailable. Keep a small runnable check for non-trivial invariants, using existing PHPUnit/native assertions rather than another framework.
@@ -239,3 +284,5 @@ Keep one progress table above and append a compact evidence entry after each exe
 Later score methodology, performance rates, evidence uploads, partner self-service and external integrations need separate specifications. Do not implement weights, denominators, accounting effects or environmental claims from assumptions.
 
 **2026-10-22 — Phase 5 accepted locally:** Baseline `7760e5a`; a physically separate guarded MySQL/October target loaded only Circularity. Exact transfer preserved 3 areas, 34 entries, IDs/UUIDs/versions/deleted rows and provider migration state; schema/index parity, migration no-op, unsafe-target/import rejection and native target HTTP pass. The unchanged connector passed four egolite groups, five actual history returns and 16 inspected screenshots with zero JavaScript exceptions. Source provider rows remained unchanged. Focused 29/789, ordinary HTTP, scoped checks and independent review pass; aggregate 100/1,767 plus five Core races and framework 425/2,287 with four existing SQLite skips. [Evidence, runtime identity, commands and limits](evidence/circularity-phase-5-2026-10-22.md). Temporary runtime closed; worktree preserved and seven files delivered uncommitted. No push, cutover or deployment.
+
+**2026-10-22 — Phases 6–7 accepted locally:** Baseline `c169d4d`, branch `codex/circularity-reporting`, uncommitted source hashes recorded in the browser evidence. Reporting adds native period/area/date/court reports in five production files, with no schema, dependency or asset changes. Phase 6 closed before grouped work. Final focused tests: 36/1,008; real HTTP pass; Egolite: seven groups, three real cached history returns, 13 inspected screenshots, zero runtime exceptions and successful harness exit. Aggregate: Vmod 107/1,986 plus five Core races; framework 425/2,287 with four existing SQLite skips. Scoped lint and one independent review/correction pass complete. [Evidence, source manifest, commands and limits](evidence/circularity-reporting-2026-10-22.md). TaskSpace 29 finished once, temporary runtime closed. Stop before later capability decisions; no commit, push or deployment.

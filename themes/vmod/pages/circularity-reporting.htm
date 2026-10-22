@@ -1,0 +1,49 @@
+title = "Circularity reporting"
+url = "/circularity/reporting"
+layout = "default"
+[identity]
+view = "layout"
+[circularityCapture]
+view = "reporting"
+==
+{% partial 'page-header' pretitle=workspaceMember.company.name title='Circularity reporting' description='Explore current saved measurements across periods, areas and food courts.' %}
+{% if circularityUnavailable %}
+<div class="alert alert-warning" role="alert">Circularity reporting is temporarily unavailable. <a href="">Try again</a>.</div>
+{% else %}
+{% set ranges = [
+    {label: 'This month', from: options.today|date('Y-m-01'), to: options.today},
+    {label: 'Last 7 days', from: options.today|date_modify('-6 days')|date('Y-m-d'), to: options.today},
+    {label: 'Today', from: options.today, to: options.today},
+    {label: 'Last month', from: options.today|date_modify('first day of last month')|date('Y-m-d'), to: options.today|date_modify('last day of last month')|date('Y-m-d')}
+] %}
+<div class="card form-filters mb-4"><div class="card-body"><form method="get" id="circularity-filters" class="row g-3" aria-label="Filter circularity reports">
+    <div class="col-12"><label for="filter-report" class="form-label">Report</label><select id="filter-report" name="report" class="form-select">{% for value, label in reportOptions %}<option value="{{ value }}" {{ report == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-md-4"><label for="filter-court" class="form-label">Food court</label><select id="filter-court" name="branch_ref" class="form-select"><option value="">All permitted courts</option>{% for branch in branches %}<option value="{{ branch.id }}" {{ selectedCourt == branch.id ? 'selected' }}>{{ branch.name }}</option>{% endfor %}</select></div>
+    <div class="col-md-4"><label for="filter-area" class="form-label">Area</label><select id="filter-area" name="area_id" class="form-select"><option value="">All areas</option>{% for area in areas %}<option value="{{ area.id }}" data-court="{{ area.branch_ref }}" {{ filters.area_id == area.id ? 'selected' }}>{{ area.name }} · {{ courtNames[area.branch_ref] }}{{ not area.is_active ? ' (inactive)' }}</option>{% endfor %}</select></div>
+    <div class="col-md-4"><label for="filter-destination" class="form-label">Destination</label><select id="filter-destination" name="destination" class="form-select"><option value="">All destinations</option>{% for value, label in options.destinations %}<option value="{{ value }}" {{ filters.destination == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select></div>
+    <div class="col-6 col-md-4"><label for="filter-from" class="form-label required">From</label><input id="filter-from" type="date" name="date_from" value="{{ filters.date_from }}" class="form-control" required></div>
+    <div class="col-6 col-md-4"><label for="filter-to" class="form-label required">Through</label><input id="filter-to" type="date" name="date_to" value="{{ filters.date_to }}" class="form-control" required></div>
+    <div class="col-md-4 d-flex align-items-end gap-2 filter-actions"><button class="btn btn-primary" type="submit">Apply filters</button><a class="btn btn-ghost-secondary" href="/circularity/reporting">Reset</a></div>
+    {% if filters.measurement_type %}<input type="hidden" name="measurement_type" value="{{ filters.measurement_type }}">{% endif %}
+    <div class="col-12 d-flex flex-wrap align-items-center gap-2"><span class="text-secondary small me-1">Quick range:</span>{% for range in ranges %}<a class="btn btn-sm btn-outline-secondary" href="/circularity/reporting?{{ filters|merge({report: report, date_from: range.from, date_to: range.to})|url_encode }}">{{ range.label }}</a>{% endfor %}<span class="form-hint ms-md-auto mb-0">Inclusive dates · {{ summary.reporting_timezone }}. Destination applies to every metric.</span></div>
+</form></div></div>
+<section class="card mb-4" aria-labelledby="report-title">
+    {% if report == 'period' %}
+    <div class="card-header"><div><h2 class="card-title" id="report-title">Period comparison</h2><p class="card-subtitle text-secondary mb-0">Current saved measurements for two consecutive periods of equal length.</p></div></div>
+    {% if comparisonUnavailable %}<div class="alert alert-warning m-3 mb-0" role="alert">The previous period is temporarily unavailable. Current-period measurements are shown below. <a href="">Try again</a>.</div>{% endif %}
+    <div class="table-responsive"><table class="table card-table table-vcenter mb-0" id="period-report"><caption class="visually-hidden">Measurement totals for current and previous periods</caption><thead><tr><th scope="col">Measurement</th><th scope="col" class="text-end">Current period<br><span class="fw-normal">{{ filters.date_from }} – {{ filters.date_to }}</span></th><th scope="col" class="text-end">Previous period{% if comparison %}<br><span class="fw-normal">{{ comparison.filters.date_from }} – {{ comparison.filters.date_to }}</span>{% endif %}</th></tr></thead><tbody>
+    {% for type, total in summary.totals %}{% set previous = comparison.totals[type] %}
+        <tr data-report-type="{{ type }}"><th scope="row">{{ options.types[type].label }} <span class="text-secondary fw-normal">({{ total.unit == 'count' ? 'items' : total.unit }})</span></th><td class="text-end" data-period="current">{% if total.quantity is not null %}<a href="{{ summaryLinks[type].total }}" data-report-quantity>{{ total.quantity }}</a>{% else %}<span class="text-secondary">No data</span>{% endif %}</td><td class="text-end" data-period="previous">{% if comparisonUnavailable %}<span class="text-secondary">Unavailable</span>{% elseif previous.quantity is not null %}<a href="{{ comparisonLinks[type].total }}" data-report-quantity>{{ previous.quantity }}</a>{% else %}<span class="text-secondary">No data</span>{% endif %}</td></tr>
+    {% endfor %}
+    </tbody></table></div>
+    {% else %}
+    <div class="card-header"><div><h2 class="card-title" id="report-title">{{ reportOptions[report] }}</h2><p class="card-subtitle text-secondary mb-0">{{ filters.date_from }} – {{ filters.date_to }} · {{ report == 'daily' ? 'Recorded dates only.' : 'Saved measurements; no ranking or normalization.' }}</p></div></div>
+    <div class="table-responsive"><table class="table card-table table-vcenter mb-0" id="grouped-report"><caption class="visually-hidden">{{ reportOptions[report] }} measurement totals</caption><thead><tr><th scope="col">{{ report == 'area' ? 'Area / stall' : (report == 'daily' ? 'Date' : 'Food court') }}</th>{% for type, total in summary.totals %}<th scope="col" class="text-end">{{ options.types[type].label }}<br><span class="fw-normal">{{ total.unit == 'count' ? 'items' : total.unit }}</span></th>{% endfor %}</tr></thead><tbody>
+    {% for row in reportRows %}<tr data-report-key="{{ row.key }}"><th scope="row">{{ row.label }}</th>{% if row.totals %}{% for type in summary.totals|keys %}{% set total = row.totals[type] %}<td class="text-end" data-report-type="{{ type }}">{% if total.quantity is not null %}<a href="{{ row.links[type].total }}" data-report-quantity>{{ total.quantity }}</a>{% else %}<span class="text-secondary">No data</span>{% endif %}</td>{% endfor %}{% else %}<td colspan="5" class="text-secondary">No matching records for these filters.</td>{% endif %}</tr>{% else %}<tr><td colspan="6" class="text-secondary">No matching records for these filters.</td></tr>{% endfor %}
+    </tbody><tfoot><tr><th scope="row">Total</th>{% for type, total in summary.totals %}<td class="text-end" data-report-total="{{ type }}">{% if total.quantity is not null %}<a href="{{ summaryLinks[type].total }}">{{ total.quantity }}</a>{% else %}<span class="text-secondary">No data</span>{% endif %}</td>{% endfor %}</tr></tfoot></table></div>
+    {% endif %}
+</section>
+<section class="card" aria-labelledby="recorded-destinations"><div class="card-header"><div><h2 class="card-title" id="recorded-destinations">Recorded waste destinations</h2><p class="card-subtitle text-secondary mb-0">For the selected period. Staff-recorded destinations do not verify treatment or recovery.</p></div></div><div class="table-responsive"><table class="table card-table table-vcenter mb-0"><thead><tr><th scope="col">Measurement</th><th scope="col">Destination</th><th scope="col" class="text-end">kg</th></tr></thead><tbody>
+{% for type, total in summary.totals %}{% if total.unit == 'kg' %}{% for row in total.destinations %}<tr><td>{{ options.types[type].label }}</td><td>{{ options.destinations[row.destination] }}</td><td class="text-end"><a href="{{ summaryLinks[type].destinations[row.destination] }}">{{ row.quantity }}</a></td></tr>{% else %}<tr><td>{{ options.types[type].label }}</td><td colspan="2" class="text-secondary">No data</td></tr>{% endfor %}{% endif %}{% endfor %}
+</tbody></table></div></section>
+{% endif %}

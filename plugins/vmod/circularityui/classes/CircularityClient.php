@@ -124,11 +124,11 @@ class CircularityClient
             abort(503, 'Circularity service is unavailable.');
         }
         abort_unless(is_array($result) && !array_is_list($result), 503, 'Circularity service is unavailable.');
-        $this->validateResponse($method, $path, $result);
+        $this->validateResponse($method, $path, $result, $data);
         return $result;
     }
 
-    private function validateResponse(string $method, string $path, array $result): void
+    private function validateResponse(string $method, string $path, array $result, array $requestData): void
     {
         $valid = true;
         if ($path === '/options') {
@@ -145,7 +145,7 @@ class CircularityClient
                 }
             }
         } elseif ($path === '/summary') {
-            $valid = $this->validSummary($result);
+            $valid = $this->validSummary($result, $requestData['group_by'] ?? null);
         } elseif ($path === '/areas' || preg_match('#\A/areas/[1-9][0-9]*\z#', $path)) {
             $list = $method === 'GET' && $path === '/areas';
             $rows = $list ? ($result['areas'] ?? null) : (isset($result['area']) ? [$result['area']] : null);
@@ -180,7 +180,7 @@ class CircularityClient
         abort_unless($valid, 503, 'Circularity service is unavailable.');
     }
 
-    private function validSummary(array $result): bool
+    private function validSummary(array $result, $groupBy = null): bool
     {
         if (Validator::make($result, [
             'reporting_timezone' => 'required|timezone', 'filters' => 'required|array',
@@ -193,8 +193,47 @@ class CircularityClient
             || array_diff(array_keys($result['filters']), ['date_from', 'date_to', 'branch_ref', 'area_id', 'measurement_type', 'destination'])) {
             return false;
         }
+        if (!$this->validTotals($result['totals'])) {
+            return false;
+        }
+        if ($groupBy === null) {
+            return !isset($result['group_by']) && !isset($result['groups']);
+        }
+        if (!in_array($groupBy, ['area', 'date', 'branch'], true) || ($result['group_by'] ?? null) !== $groupBy
+            || !is_array($result['groups'] ?? null) || !array_is_list($result['groups'])) {
+            return false;
+        }
+        $seen = [];
+        $counts = array_fill_keys(array_keys($result['totals']), 0);
+        foreach ($result['groups'] as $group) {
+            $key = is_array($group) ? ($group['key'] ?? null) : null;
+            if (!is_string($key) || $key === '' || strlen($key) > 128 || trim($key) !== $key || isset($seen[$key])
+                || ($groupBy === 'area' && !preg_match('/\A[1-9][0-9]{0,19}\z/', $key))
+                || ($groupBy === 'date' && (!Validator::make(['date' => $key], ['date' => 'date_format:Y-m-d'])->passes()
+                    || $key < $result['filters']['date_from'] || $key > $result['filters']['date_to']))
+                || !$this->validTotals($group['totals'] ?? null)) {
+                return false;
+            }
+            $seen[$key] = true;
+            foreach ($group['totals'] as $type => $total) {
+                $counts[$type] += $total['entry_count'];
+            }
+        }
+        foreach ($counts as $type => $count) {
+            if ($count !== $result['totals'][$type]['entry_count']) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private function validTotals($totals): bool
+    {
+        if (!is_array($totals) || count($totals) !== 5) {
+            return false;
+        }
         foreach (['food_waste', 'packaging_waste', 'mixed_waste', 'reusable_issued', 'reusable_returned'] as $type) {
-            $total = $result['totals'][$type] ?? null;
+            $total = $totals[$type] ?? null;
             $count = str_starts_with($type, 'reusable_');
             if (!is_array($total) || ($total['unit'] ?? null) !== ($count ? 'count' : 'kg')
                 || !is_int($total['entry_count'] ?? null) || $total['entry_count'] < 0
