@@ -258,7 +258,7 @@ document.addEventListener('click', event => {
             input.type = 'hidden'; input.name = `links[0][${field}]`; input.value = value; row.append(input);
         }
         const button = document.createElement('button');
-        button.type = 'button'; button.className = 'btn btn-sm btn-outline-secondary'; button.dataset.invoiceRemove = '';
+        button.type = 'button'; button.className = 'btn btn-sm btn-ghost-danger ms-auto'; button.dataset.invoiceRemove = '';
         button.textContent = 'Remove'; button.setAttribute('aria-label', `Remove ${add.dataset.number}`); row.append(button);
         list.append(row); reindexInvoiceLinks(); validateInvoiceLinks(); button.focus();
     }
@@ -451,3 +451,18 @@ document.addEventListener('ajax:request-success', async event => {
 });
 circularityControls();
 checkCircularityGroup();
+
+// Tabs and disclosures follow the URL hash, so reloads, redirects and shared links reopen the same panel.
+function revealHash() {
+    const target = location.hash.length > 1 && document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    if (!target) return;
+    const pane = target.closest('.tab-pane');
+    const trigger = pane && document.querySelector(`[data-bs-toggle="tab"][data-bs-target="#${pane.id}"]`);
+    if (trigger) bootstrap.Tab.getOrCreateInstance(trigger).show();
+    target.closest('details')?.setAttribute('open', '');
+}
+revealHash();
+window.addEventListener('hashchange', revealHash);
+document.addEventListener('shown.bs.tab', event => {
+    if (event.target.dataset.bsTarget) history.replaceState(history.state, '', event.target.dataset.bsTarget);
+});

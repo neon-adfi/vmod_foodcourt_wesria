@@ -6,18 +6,40 @@ view = "layout"
 [workspaces]
 view = "overview"
 ==
-<div class="page-heading"><div class="subheader">Workspace overview</div><h1>{{ workspaceMember.company.name }}</h1><p class="text-secondary">{{ workspaceBranch ? workspaceBranch.name : 'Company · all permitted branches' }}</p></div>
+{% set actions = [
+    {perm: 'purchaseorder.write', url: '/purchasing?new=1', icon: 'cart', label: 'New purchase order', hint: 'Order from an approved supplier'},
+    {perm: 'goodsreceipt.write', url: '/receiving?new=1', icon: 'package', label: 'Receive goods', hint: 'Record a delivery against a PO'},
+    {perm: 'salesorder.write', url: '/sales?new=1', icon: 'truck', label: 'New sales order', hint: 'Reserve stock for a customer'},
+    {perm: 'deliveryorder.write', url: '/delivery?new=1', icon: 'truck', label: 'Dispatch delivery', hint: 'Deliver an approved sales order'},
+    {perm: 'circularity.write', url: '/circularity/entries?new=1', icon: 'recycle', label: 'Record measurement', hint: 'Waste or reusable items for an area'},
+    {perm: 'invoice_reference.write', url: '/invoice-references?new=1', icon: 'receipt', label: 'Record invoice reference', hint: 'Link an external invoice to documents'},
+    {perm: 'inventory.read', url: '/inventory', icon: 'package', label: 'Check stock', hint: 'On-hand, reserved and available'}
+]|filter(action => access[action.perm]) %}
+{% partial 'page-header' pretitle='Workspace overview' title=workspaceMember.company.name description=(workspaceBranch ? workspaceBranch.name : 'Company · all permitted branches') body %}
+    <a class="btn btn-outline-secondary" href="/workspaces">{% partial 'icon' name='building' %}Switch workspace</a>
+{% endpartial %}
 <div class="row g-3">
-    <div class="col-lg-5"><div class="card workspace-card h-100"><div class="card-body">
-        <h2 class="h3">Welcome, {{ currentUser.first_name }}</h2><p class="text-secondary">Your role is <strong>{{ workspaceMember.role.name }}</strong>.</p>
-        <p class="mb-4">Choose a workspace to switch between the companies and branches you can access.</p><a class="btn btn-primary" href="/workspaces">Switch workspace</a>
-    </div></div></div>
-    <div class="col-lg-7"><div class="card h-100"><div class="card-body"><h2 class="h3 mb-3">Manage your workspace</h2>
-        <div class="list-group list-group-flush">
-            {% if access['workspace.manage'] %}<a class="list-group-item list-group-item-action px-0" href="/settings/company"><strong>Company & branches</strong><div class="text-secondary">Keep workspace details up to date.</div></a>{% endif %}
-            {% if access['users.manage'] %}<a class="list-group-item list-group-item-action px-0" href="/settings/members"><strong>Members</strong><div class="text-secondary">Invite people and manage their access.</div></a>{% endif %}
-            {% if access['roles.manage'] %}<a class="list-group-item list-group-item-action px-0" href="/settings/roles"><strong>Roles & permissions</strong><div class="text-secondary">Define what each role can do.</div></a>{% endif %}
-            <a class="list-group-item list-group-item-action px-0" href="/account"><strong>Your account</strong><div class="text-secondary">Update your name or password.</div></a>
-        </div>
-    </div></div></div>
+    <div class="col-lg-8">
+        <section class="card h-100" aria-labelledby="quick-actions-title">
+            <div class="card-header"><div><h2 class="card-title" id="quick-actions-title">Welcome, {{ currentUser.first_name }}</h2><p class="card-subtitle text-secondary mb-0">You are signed in as <strong>{{ workspaceMember.role.name }}</strong>. Start a common task:</p></div></div>
+            {% if actions|length %}
+            <div class="quick-actions">
+                {% for action in actions %}<a class="quick-action" href="{{ action.url }}"><span class="avatar bg-primary-lt">{% partial 'icon' name=action.icon %}</span><span><span class="d-block fw-semibold">{{ action.label }}</span><span class="d-block small text-secondary">{{ action.hint }}</span></span></a>{% endfor %}
+            </div>
+            {% else %}
+            <div class="empty"><p class="empty-title">No tasks yet</p><p class="empty-subtitle text-secondary">Your role has no operational permissions in this workspace. Ask an administrator if you need access.</p></div>
+            {% endif %}
+        </section>
+    </div>
+    <div class="col-lg-4">
+        <section class="card h-100" aria-labelledby="manage-title"><div class="card-header"><h2 class="card-title" id="manage-title">Manage your workspace</h2></div>
+            <div class="list-group list-group-flush">
+                {% if access['workspace.manage'] %}<a class="list-group-item list-group-item-action" href="/settings/company"><strong>Company & branches</strong><div class="small text-secondary">Keep workspace details up to date.</div></a>{% endif %}
+                {% if access['users.manage'] %}<a class="list-group-item list-group-item-action" href="/settings/members"><strong>Members</strong><div class="small text-secondary">Invite people and manage their access.</div></a>{% endif %}
+                {% if access['roles.manage'] %}<a class="list-group-item list-group-item-action" href="/settings/roles"><strong>Roles & permissions</strong><div class="small text-secondary">Define what each role can do.</div></a>{% endif %}
+                {% if access['catalogue.read'] %}<a class="list-group-item list-group-item-action" href="/catalogue/products"><strong>Catalogue</strong><div class="small text-secondary">Products, packages, prices and parties.</div></a>{% endif %}
+                <a class="list-group-item list-group-item-action" href="/account"><strong>Your account</strong><div class="small text-secondary">Update your name or password.</div></a>
+            </div>
+        </section>
+    </div>
 </div>

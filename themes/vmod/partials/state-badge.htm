@@ -1,0 +1,2 @@
+{% set tones = {draft: 'secondary', approved: 'blue', partially_received: 'orange', partially_delivered: 'orange', completed: 'green', confirmed: 'green', dispatched: 'green', active: 'green', voided: 'red', closed_short: 'purple'} %}
+<span class="badge bg-{{ tones[state]|default('secondary') }}-lt">{{ state|replace({'_': ' '}) }}</span>

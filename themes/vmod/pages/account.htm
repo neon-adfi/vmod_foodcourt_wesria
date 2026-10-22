@@ -4,21 +4,27 @@ layout = "default"
 [identity]
 view = "account"
 ==
-<div class="page-heading"><div class="subheader">Personal settings</div><h1>Your account</h1><p class="text-secondary text-break">{{ currentUser.email }}</p></div>
+{% partial 'page-header' pretitle='Personal settings' title='Your account' description=currentUser.email %}
 <div class="row g-3">
-<div class="col-lg-6"><div class="card"><div class="card-body"><h2 class="h3">Your name</h2>
-<form data-request="identity::onProfile" data-request-validate data-request-flash method="post">
+<div class="col-lg-6"><section class="card h-100" aria-labelledby="profile-title">
+<div class="card-header"><h2 class="card-title" id="profile-title">Your name</h2></div>
+<form class="d-flex flex-column flex-fill" data-request="identity::onProfile" data-request-validate data-request-flash method="post">
+    <div class="card-body">
     {% partial 'form-errors' %}
-    <label class="form-label" for="first_name">First name</label><input class="form-control" id="first_name" name="first_name" value="{{ currentUser.first_name }}" autocomplete="given-name" required><div class="invalid-feedback d-block" data-validate-for="first_name"></div>
-    <label class="form-label mt-3" for="last_name">Last name</label><input class="form-control" id="last_name" name="last_name" value="{{ currentUser.last_name }}" autocomplete="family-name"><div class="invalid-feedback d-block" data-validate-for="last_name"></div>
-    <button class="btn btn-primary mt-4" type="submit">Save profile</button>
-</form></div></div></div>
-<div class="col-lg-6"><div class="card"><div class="card-body"><h2 class="h3">Change password</h2>
-<form data-request="identity::onPassword" data-request-validate data-request-flash method="post">
+    <div class="mb-3"><label class="form-label required" for="first_name">First name</label><input class="form-control" id="first_name" name="first_name" value="{{ currentUser.first_name }}" autocomplete="given-name" required><div class="invalid-feedback d-block" data-validate-for="first_name"></div></div>
+    <div><label class="form-label" for="last_name">Last name</label><input class="form-control" id="last_name" name="last_name" value="{{ currentUser.last_name }}" autocomplete="family-name"><div class="invalid-feedback d-block" data-validate-for="last_name"></div></div>
+    </div>
+    <div class="card-footer text-end mt-auto"><button class="btn btn-primary" type="submit">Save profile</button></div>
+</form></section></div>
+<div class="col-lg-6"><section class="card h-100" aria-labelledby="password-title">
+<div class="card-header"><h2 class="card-title" id="password-title">Change password</h2></div>
+<form class="d-flex flex-column flex-fill" data-request="identity::onPassword" data-request-validate data-request-flash method="post">
+    <div class="card-body">
     {% partial 'form-errors' %}
-    <label class="form-label" for="current_password">Current password</label><input class="form-control" id="current_password" name="current_password" type="password" autocomplete="current-password" required><div class="invalid-feedback d-block" data-validate-for="current_password"></div>
-    <label class="form-label mt-3" for="password">New password</label><input class="form-control" id="password" name="password" type="password" autocomplete="new-password" required><div class="invalid-feedback d-block" data-validate-for="password"></div>
-    <label class="form-label mt-3" for="password_confirmation">Confirm password</label><input class="form-control" id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" required><div class="invalid-feedback d-block" data-validate-for="password_confirmation"></div>
-    <button class="btn btn-primary mt-4" type="submit">Update password</button>
-</form></div></div></div>
+    <div class="mb-3"><label class="form-label required" for="current_password">Current password</label><input class="form-control" id="current_password" name="current_password" type="password" autocomplete="current-password" required><div class="invalid-feedback d-block" data-validate-for="current_password"></div></div>
+    <div class="mb-3"><label class="form-label required" for="password">New password</label><input class="form-control" id="password" name="password" type="password" autocomplete="new-password" required><div class="invalid-feedback d-block" data-validate-for="password"></div></div>
+    <div><label class="form-label required" for="password_confirmation">Confirm password</label><input class="form-control" id="password_confirmation" name="password_confirmation" type="password" autocomplete="new-password" required><div class="invalid-feedback d-block" data-validate-for="password_confirmation"></div></div>
+    </div>
+    <div class="card-footer text-end mt-auto"><button class="btn btn-primary" type="submit">Update password</button></div>
+</form></section></div>
 </div>

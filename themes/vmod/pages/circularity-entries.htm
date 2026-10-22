@@ -6,47 +6,83 @@ view = "layout"
 [circularityCapture]
 view = "entries"
 ==
-<div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }}</div><h1>Circularity measurements</h1><p class="text-secondary">Record daily totals or individual measurements for each area. Mixed waste stays separate.</p></div>
-<nav class="d-flex gap-3 mb-4" aria-label="Circularity"><a href="/circularity">Overview</a><a href="/circularity/entries" aria-current="page">Measurements</a><a href="/circularity/areas">Areas</a></nav>
+{% set editing = entryUuid and entry.status != 'removed' and access['circularity.write'] %}
+{% partial 'page-header' pretitle=workspaceMember.company.name title=(editing ? (entry ? 'Edit measurement' : 'New measurement') : (entryUuid ? 'Measurement' : 'Circularity measurements')) description=(entryUuid ? null : 'Record daily totals or individual measurements for each area. Mixed waste stays separate.') body %}
+    {% if entryUuid %}<a class="btn btn-outline-secondary" href="/circularity/entries">All measurements</a>{% endif %}
+    {% if access['circularity.write'] and (not entryUuid or entry.status == 'removed') %}<a class="btn btn-primary" href="/circularity/entries?new=1">{% partial 'icon' name='plus' %}New measurement</a>{% endif %}
+{% endpartial %}
 {% if circularityUnavailable %}<div class="alert alert-warning" role="alert">Circularity is temporarily unavailable. <a href="">Try again</a>.</div>{% else %}
-{% if entryUuid %}<a class="btn btn-outline-secondary mb-3" href="/circularity/entries">All measurements</a>
-{% if entry.status == 'removed' %}<div class="alert alert-info" role="status">This measurement was removed.</div>{% if access['circularity.write'] %}<a class="btn btn-primary" href="/circularity/entries?new=1">New measurement</a>{% endif %}
+{% if entryUuid %}
+{% if entry.status == 'removed' %}<div class="alert alert-info" role="status">This measurement was removed.</div>
 {% elseif access['circularity.write'] %}
-<section class="card"><div class="card-body"><h2>{{ entry ? 'Edit measurement' : 'New measurement' }}</h2>
+<section class="card"><div class="card-header"><div><h2 class="card-title mb-1">Measurement details</h2>{% if entry %}<p class="card-subtitle text-secondary mb-0">{{ courtNames[entry.branch_ref] }} · Version {{ entry.version }}</p>{% else %}<p class="card-subtitle text-secondary mb-0">Each measurement belongs to one food court and area.</p>{% endif %}</div></div>
+<div class="card-body">
 <form id="circularity-entry-form" data-request="circularityCapture::onSaveEntry" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" data-editing="{{ entry ? '1' : '0' }}" method="post">
 {% partial 'form-errors' %}
 <input type="hidden" name="uuid" value="{{ entryUuid }}"><input type="hidden" name="editing" value="{{ entry ? '1' : '0' }}">
-{% if entry %}<input type="hidden" name="version" value="{{ entry.version }}"><input type="hidden" name="branch_ref" value="{{ entry.branch_ref }}"><p>{{ courtNames[entry.branch_ref] }} · Version {{ entry.version }}</p><p class="text-secondary">To correct the food court, remove this measurement and create it in the correct court.</p>
-{% else %}<label for="capture-court" class="form-label">Food court</label><select id="capture-court" name="branch_ref" class="form-select mb-3" required><option value="">Choose food court</option>{% for branch in branches %}<option value="{{ branch.id }}" {{ selectedCourt == branch.id ? 'selected' }}>{{ branch.name }}</option>{% endfor %}</select>{% endif %}
-<div class="row g-3 mb-3">
-<div class="col-md-6"><label for="capture-area" class="form-label">Area</label><select id="capture-area" name="area_id" class="form-select" required><option value="">Choose area</option>{% for area in areas %}{% if area.is_active or entry.area_id == area.id %}<option value="{{ area.id }}" data-court="{{ area.branch_ref }}" {{ entry.area_id == area.id ? 'selected' }}>{{ area.name }}{{ not area.is_active ? ' (inactive)' }}</option>{% endif %}{% endfor %}</select><a class="small" href="/circularity/areas" target="_blank" rel="noopener">Manage areas</a></div>
-<div class="col-md-6"><label for="capture-date" class="form-label">Measurement date</label><input id="capture-date" type="date" name="measurement_date" class="form-control" value="{{ entry ? entry.measurement_date : options.today }}" max="{{ options.today }}" required><div class="form-hint">Today or earlier · {{ options.reporting_timezone }}</div></div>
-<div class="col-md-6"><label for="capture-type" class="form-label">Measurement type</label><select id="capture-type" name="measurement_type" class="form-select">{% for value, type in options.types %}<option value="{{ value }}" data-unit="{{ type.unit }}" {{ entry.measurement_type == value ? 'selected' }}>{{ type.label }}</option>{% endfor %}</select></div>
-<div class="col-md-6"><label for="capture-destination" class="form-label">Destination</label><select id="capture-destination" name="destination" class="form-select">{% for value, label in options.destinations %}<option value="{{ value }}" {{ entry.destination == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select></div>
-<div class="col-md-6"><label for="capture-mode" class="form-label">Input mode</label><select id="capture-mode" class="form-select" {{ entry ? 'disabled' }}>{% for value, label in options.modes %}<option value="{{ value }}" {{ entry.mode == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select><input type="hidden" name="mode" value="{{ entry ? entry.mode : 'daily_total' }}"><p id="capture-group" class="form-hint" aria-live="polite">A group uses one mode. Remove its measurements before switching.</p></div>
-<div class="col-md-6"><label for="capture-quantity" class="form-label">Quantity · <span id="capture-unit">{{ entry ? entry.unit : 'kg' }}</span></label><input id="capture-quantity" name="quantity" class="form-control" inputmode="decimal" value="{{ entry.quantity }}" required maxlength="16"><div class="form-hint">Zero is allowed. Kilograms: up to 3 decimals. Reusable items: whole counts.</div></div>
+{% if entry %}<input type="hidden" name="version" value="{{ entry.version }}"><input type="hidden" name="branch_ref" value="{{ entry.branch_ref }}">{% endif %}
+
+<div class="form-section">
+    <h3 class="subheader">1 · Where and when</h3>
+    <div class="row g-3">
+        {% if entry %}
+        <div class="col-12"><p class="form-hint mb-0">Food court: <strong>{{ courtNames[entry.branch_ref] }}</strong>. To correct the food court, remove this measurement and create it in the correct court.</p></div>
+        {% else %}
+        <div class="col-md-12"><label for="capture-court" class="form-label required">Food court</label><select id="capture-court" name="branch_ref" class="form-select" required><option value="">Choose food court</option>{% for branch in branches %}<option value="{{ branch.id }}" {{ selectedCourt == branch.id ? 'selected' }}>{{ branch.name }}</option>{% endfor %}</select></div>
+        {% endif %}
+        <div class="col-md-6"><label for="capture-area" class="form-label required">Area</label><select id="capture-area" name="area_id" class="form-select" required aria-describedby="capture-area-hint"><option value="">Choose area</option>{% for area in areas %}{% if area.is_active or entry.area_id == area.id %}<option value="{{ area.id }}" data-court="{{ area.branch_ref }}" {{ entry.area_id == area.id ? 'selected' }}>{{ area.name }}{{ not area.is_active ? ' (inactive)' }}</option>{% endif %}{% endfor %}</select><small class="form-hint" id="capture-area-hint">Area missing? <a href="/circularity/areas?new=1" target="_blank" rel="noopener">Add an area<span class="visually-hidden"> (opens in a new tab)</span> ↗</a></small></div>
+        <div class="col-md-6"><label for="capture-date" class="form-label required">Measurement date</label><input id="capture-date" type="date" name="measurement_date" class="form-control" value="{{ entry ? entry.measurement_date : options.today }}" max="{{ options.today }}" required aria-describedby="capture-date-hint"><small class="form-hint" id="capture-date-hint">Today or earlier · {{ options.reporting_timezone }}</small></div>
+    </div>
 </div>
-<label for="capture-reference" class="form-label">Reference <span class="text-secondary">(optional)</span></label><input id="capture-reference" name="reference" value="{{ entry.reference }}" class="form-control mb-3" maxlength="120">
-<label for="capture-notes" class="form-label">Notes <span class="text-secondary">(optional)</span></label><textarea id="capture-notes" name="notes" class="form-control mb-3" maxlength="2000" rows="3">{{ entry.notes }}</textarea>
+
+<div class="form-section">
+    <h3 class="subheader">2 · What was measured</h3>
+    <div class="row g-3">
+        <div class="col-md-6"><label for="capture-type" class="form-label required">Measurement type</label><select id="capture-type" name="measurement_type" class="form-select">{% for value, type in options.types %}<option value="{{ value }}" data-unit="{{ type.unit }}" {{ entry.measurement_type == value ? 'selected' }}>{{ type.label }}</option>{% endfor %}</select></div>
+        <div class="col-md-6"><label for="capture-destination" class="form-label required">Destination</label><select id="capture-destination" name="destination" class="form-select">{% for value, label in options.destinations %}<option value="{{ value }}" {{ entry.destination == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select></div>
+        <div class="col-md-6"><label for="capture-mode" class="form-label">Input mode</label><select id="capture-mode" class="form-select" aria-describedby="capture-group" {{ entry ? 'disabled' }}>{% for value, label in options.modes %}<option value="{{ value }}" {{ entry.mode == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select><input type="hidden" name="mode" value="{{ entry ? entry.mode : 'daily_total' }}"><p id="capture-group" class="form-hint small mb-0" aria-live="polite">A group uses one mode. Remove its measurements before switching.</p></div>
+        <div class="col-md-6"><label for="capture-quantity" class="form-label required">Quantity</label><div class="input-group"><input id="capture-quantity" name="quantity" class="form-control" inputmode="decimal" value="{{ entry.quantity }}" required maxlength="16" aria-describedby="capture-unit capture-quantity-hint"><span class="input-group-text" id="capture-unit">{{ entry ? entry.unit : 'kg' }}</span></div><small class="form-hint" id="capture-quantity-hint">Zero is allowed. Kilograms: up to 3 decimals. Reusable items: whole counts.</small></div>
+    </div>
+</div>
+
+<div class="form-section">
+    <h3 class="subheader">3 · Reference &amp; notes <span class="text-secondary fw-normal text-lowercase">(optional)</span></h3>
+    <div class="row g-3">
+        <div class="col-md-6"><label for="capture-reference" class="form-label">Reference</label><input id="capture-reference" name="reference" value="{{ entry.reference }}" class="form-control" maxlength="120"></div>
+        <div class="col-md-12"><label for="capture-notes" class="form-label">Notes</label><textarea id="capture-notes" name="notes" class="form-control" maxlength="2000" rows="3">{{ entry.notes }}</textarea></div>
+    </div>
+</div>
+
 {% for field in ['branch_ref','area_id','measurement_date','measurement_type','mode','quantity','destination','reference','notes','version','uuid'] %}<div class="invalid-feedback d-block" data-validate-for="{{ field }}"></div>{% endfor %}
-<div class="d-flex flex-wrap gap-2"><button class="btn btn-primary" type="submit" data-circularity-save>Save measurement</button><button class="btn btn-outline-secondary" type="button" data-request="circularityCapture::onCheckEntry">Check saved entry</button>
-{% if entry %}<button class="btn btn-outline-danger" type="button" data-request="circularityCapture::onRemoveEntry" data-request-confirm="Remove this measurement?" data-circularity-save>Remove measurement</button>{% endif %}</div>
+<div class="form-actions form-actions-sticky"><button class="btn btn-primary" type="submit" data-circularity-save>Save measurement</button><button class="btn btn-outline-secondary" type="button" data-request="circularityCapture::onCheckEntry" title="Confirm whether this measurement was saved, for example after a connection problem">Check saved entry</button>
+{% if entry %}<button class="btn btn-outline-danger ms-auto" type="button" data-request="circularityCapture::onRemoveEntry" data-request-confirm="Remove this measurement?" data-circularity-save>Remove measurement</button>{% endif %}</div>
 <div id="capture-recovery" class="mt-3" aria-live="polite"></div>
 </form></div></section>
 {% elseif entry %}
-<section class="card" id="circularity-detail"><div class="card-body"><h2>{{ options.types[entry.measurement_type].label }}</h2><p>{{ courtNames[entry.branch_ref] }} · {{ areaNames[entry.area_id] }} · {{ entry.measurement_date }}</p><p>{{ entry.quantity }} {{ entry.unit }} · {{ options.destinations[entry.destination] }} · {{ options.modes[entry.mode] }}</p>{% if entry.reference %}<p>Reference: {{ entry.reference }}</p>{% endif %}{% if entry.notes %}<p>{{ entry.notes }}</p>{% endif %}</div></section>
+<section class="card" id="circularity-detail"><div class="card-header"><div><h2 class="card-title mb-1">{{ options.types[entry.measurement_type].label }}</h2><p class="card-subtitle text-secondary mb-0">{{ courtNames[entry.branch_ref] }} · {{ areaNames[entry.area_id] }} · {{ entry.measurement_date }}</p></div></div>
+<div class="card-body"><div class="datagrid">
+    <div class="datagrid-item"><div class="datagrid-title">Quantity</div><div class="datagrid-content fs-2 fw-semibold">{{ entry.quantity }} <span class="text-secondary fw-normal fs-4">{{ entry.unit }}</span></div></div>
+    <div class="datagrid-item"><div class="datagrid-title">Destination</div><div class="datagrid-content">{{ options.destinations[entry.destination] }}</div></div>
+    <div class="datagrid-item"><div class="datagrid-title">Mode</div><div class="datagrid-content">{{ options.modes[entry.mode] }}</div></div>
+    {% if entry.reference %}<div class="datagrid-item"><div class="datagrid-title">Reference</div><div class="datagrid-content">{{ entry.reference }}</div></div>{% endif %}
+    {% if entry.notes %}<div class="datagrid-item"><div class="datagrid-title">Notes</div><div class="datagrid-content text-break">{{ entry.notes }}</div></div>{% endif %}
+</div></div></section>
 {% endif %}
 {% else %}
-<form method="get" class="row g-2 mb-3" id="circularity-filters">
-<div class="col-md-3"><label for="filter-court" class="form-label">Food court</label><select id="filter-court" name="branch_ref" class="form-select"><option value="">All permitted courts</option>{% for branch in branches %}<option value="{{ branch.id }}" {{ selectedCourt == branch.id ? 'selected' }}>{{ branch.name }}</option>{% endfor %}</select></div>
-<div class="col-md-3"><label for="filter-area" class="form-label">Area</label><select id="filter-area" name="area_id" class="form-select"><option value="">All areas</option>{% for area in areas %}<option value="{{ area.id }}" data-court="{{ area.branch_ref }}" {{ filters.area_id == area.id ? 'selected' }}>{{ area.name }}</option>{% endfor %}</select></div>
-<div class="col-md-3"><label for="filter-from" class="form-label">From</label><input id="filter-from" type="date" name="date_from" value="{{ filters.date_from }}" class="form-control"></div>
-<div class="col-md-3"><label for="filter-to" class="form-label">Through</label><input id="filter-to" type="date" name="date_to" value="{{ filters.date_to }}" class="form-control"></div>
-<div class="col-md-2"><label for="filter-type" class="form-label">Type</label><select id="filter-type" name="measurement_type" class="form-select"><option value="">All types</option>{% for value, type in options.types %}<option value="{{ value }}" {{ filters.measurement_type == value ? 'selected' }}>{{ type.label }}</option>{% endfor %}</select></div>
-<div class="col-md-2"><label for="filter-destination" class="form-label">Destination</label><select id="filter-destination" name="destination" class="form-select"><option value="">All destinations</option>{% for value, label in options.destinations %}<option value="{{ value }}" {{ filters.destination == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select></div>
-<div class="d-flex gap-2"><button class="btn btn-outline-primary">Filter</button><a class="btn btn-outline-secondary" href="/circularity/entries">Reset</a></div><p class="form-hint">Leave both dates empty for all history, or choose both endpoints · {{ options.reporting_timezone }}.</p></form>
-{% if access['circularity.write'] %}<a class="btn btn-primary mb-3" href="/circularity/entries?new=1">New measurement</a>{% endif %}
-<div class="card"><div class="table-responsive"><table class="table"><thead><tr><th>Date</th><th>Food court / area</th><th>Measurement</th><th>Quantity</th><th>Destination</th><th>Mode</th></tr></thead><tbody>
-{% for row in records.data %}<tr><td><a href="/circularity/entries?uuid={{ row.uuid }}">{{ row.measurement_date }}</a></td><td>{{ courtNames[row.branch_ref] }} / {{ areaNames[row.area_id] }}</td><td>{{ options.types[row.measurement_type].label }}</td><td>{{ row.quantity }} {{ row.unit }}</td><td>{{ options.destinations[row.destination] }}</td><td>{{ options.modes[row.mode] }}</td></tr>{% else %}<tr><td colspan="6">No measurements found.</td></tr>{% endfor %}
-</tbody></table></div></div><nav class="d-flex gap-3 my-3" aria-label="Measurement pages">{% if previousUrl %}<a href="{{ previousUrl }}">Previous</a>{% endif %}<span>Page {{ records.current_page }} of {{ records.last_page }}</span>{% if nextUrl %}<a href="{{ nextUrl }}">Next</a>{% endif %}</nav>
+<div class="card mb-4">
+<div class="card-body border-bottom"><form method="get" class="row g-3" id="circularity-filters" aria-label="Filter measurements">
+<div class="col-md-4 col-lg-3"><label for="filter-court" class="form-label">Food court</label><select id="filter-court" name="branch_ref" class="form-select"><option value="">All permitted courts</option>{% for branch in branches %}<option value="{{ branch.id }}" {{ selectedCourt == branch.id ? 'selected' }}>{{ branch.name }}</option>{% endfor %}</select></div>
+<div class="col-md-4 col-lg-3"><label for="filter-area" class="form-label">Area</label><select id="filter-area" name="area_id" class="form-select"><option value="">All areas</option>{% for area in areas %}<option value="{{ area.id }}" data-court="{{ area.branch_ref }}" {{ filters.area_id == area.id ? 'selected' }}>{{ area.name }}</option>{% endfor %}</select></div>
+<div class="col-6 col-md-4 col-lg-3"><label for="filter-from" class="form-label">From</label><input id="filter-from" type="date" name="date_from" value="{{ filters.date_from }}" class="form-control"></div>
+<div class="col-6 col-md-4 col-lg-3"><label for="filter-to" class="form-label">Through</label><input id="filter-to" type="date" name="date_to" value="{{ filters.date_to }}" class="form-control"></div>
+<div class="col-md-4 col-lg-3"><label for="filter-type" class="form-label">Type</label><select id="filter-type" name="measurement_type" class="form-select"><option value="">All types</option>{% for value, type in options.types %}<option value="{{ value }}" {{ filters.measurement_type == value ? 'selected' }}>{{ type.label }}</option>{% endfor %}</select></div>
+<div class="col-md-4 col-lg-3"><label for="filter-destination" class="form-label">Destination</label><select id="filter-destination" name="destination" class="form-select"><option value="">All destinations</option>{% for value, label in options.destinations %}<option value="{{ value }}" {{ filters.destination == value ? 'selected' }}>{{ label }}</option>{% endfor %}</select></div>
+<div class="col-12 col-lg-6 d-flex flex-wrap gap-2 align-items-end filter-actions"><button class="btn btn-outline-primary">{% partial 'icon' name='search' %}Apply filters</button><a class="btn btn-ghost-secondary" href="/circularity/entries">Reset</a></div>
+<div class="col-12"><small class="form-hint">Leave both dates empty for all history, or choose both endpoints · {{ options.reporting_timezone }}.</small></div>
+</form></div>
+<div class="table-responsive"><table class="table card-table table-vcenter mb-0"><thead><tr><th>Date</th><th>Food court / area</th><th>Measurement</th><th class="text-end">Quantity</th><th>Destination</th><th>Mode</th></tr></thead><tbody>
+{% for row in records.data %}<tr><td><a class="fw-semibold" href="/circularity/entries?uuid={{ row.uuid }}">{{ row.measurement_date }}</a></td><td>{{ courtNames[row.branch_ref] }}<div class="small text-secondary">{{ areaNames[row.area_id] }}</div></td><td>{{ options.types[row.measurement_type].label }}</td><td class="text-end fw-semibold text-nowrap">{{ row.quantity }} <span class="text-secondary fw-normal">{{ row.unit }}</span></td><td>{{ options.destinations[row.destination] }}</td><td><span class="badge bg-secondary-lt">{{ options.modes[row.mode] }}</span></td></tr>{% else %}<tr><td colspan="6" class="table-empty">No measurements found for these filters.{% if access['circularity.write'] %} <a href="/circularity/entries?new=1">Record a measurement</a>.{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="card-footer d-flex align-items-center justify-content-between gap-2"><span class="text-secondary small">Page {{ records.current_page }} of {{ records.last_page }}</span><div class="btn-list">{% if previousUrl %}<a class="btn btn-outline-secondary btn-sm" href="{{ previousUrl }}">Previous</a>{% endif %}{% if nextUrl %}<a class="btn btn-outline-secondary btn-sm" href="{{ nextUrl }}">Next</a>{% endif %}</div></div>
+</div>
 {% endif %}{% endif %}

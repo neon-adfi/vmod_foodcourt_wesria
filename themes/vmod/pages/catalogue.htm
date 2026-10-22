@@ -5,20 +5,44 @@ layout = "default"
 view = "layout"
 [catalogue]
 ==
-<div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }} · {{ workspaceMember.company.currency }}</div><h1>{{ catalogueTitle }}</h1><p class="text-secondary">Company master data. Catalogue prices are before tax.</p></div>
-<nav class="nav nav-pills gap-1 mb-4 flex-wrap" aria-label="Catalogue sections">
-{% for key, label in kinds %}<a class="nav-link {{ kind == key ? 'active' }}" href="/catalogue/{{ key }}" {{ kind == key ? 'aria-current="page"' }}>{{ label }}</a>{% endfor %}
-</nav>
-<div class="card mb-4"><div class="card-body">
-<form method="get" class="row g-2 align-items-end" aria-label="Search catalogue">
-    <div class="col-md-6"><label class="form-label" for="catalogue-search">Search</label><input class="form-control" id="catalogue-search" name="q" value="{{ filters.q }}" maxlength="100"></div>
-    <div class="col-md-3"><label class="form-label" for="catalogue-status">Availability</label><select class="form-select" id="catalogue-status" name="status"><option value="active" {{ filters.status|default('active') == 'active' ? 'selected' }}>Available</option><option value="inactive" {{ filters.status == 'inactive' ? 'selected' }}>Inactive or unavailable</option><option value="all" {{ filters.status == 'all' ? 'selected' }}>All records</option></select></div>
-    <div class="col-md-3 d-flex gap-2"><button class="btn btn-outline-primary" type="submit">Search</button>{% if canWriteCatalogue %}<a class="btn btn-primary" href="/catalogue/{{ kind }}?new=1#catalogue-editor">Add record</a>{% endif %}</div>
+{% partial 'page-header' pretitle=workspaceMember.company.name ~ ' · ' ~ workspaceMember.company.currency title=catalogueTitle description='Company master data. Catalogue prices are before tax.' body %}
+    {% if canWriteCatalogue and not showEditor %}<a class="btn btn-primary" href="/catalogue/{{ kind }}?new=1#catalogue-editor">{% partial 'icon' name='plus' %}Add record</a>{% endif %}
+{% endpartial %}
+{% if showEditor %}
+<section class="card mb-4" aria-labelledby="editor-title" id="catalogue-editor">
+<div class="card-header"><div><h2 class="card-title" id="editor-title">{{ record ? 'Edit record' : 'Add record' }}</h2>{% if record %}<p class="card-subtitle text-secondary mb-0">{{ kind == 'offers' ? record.supplier.name : record.name }}</p>{% endif %}</div></div>
+<div class="card-body">
+<form id="catalogue-form" data-request="catalogue::{{ saveHandler }}" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">
+    {% partial 'form-errors' %}
+    {% if record %}<input type="hidden" name="id" value="{{ record.id }}"><input type="hidden" name="version" value="{{ record.version }}">{% endif %}
+    {% if kind in ['packages', 'offers'] %}<input type="hidden" name="expected_currency" value="{{ workspaceMember.company.currency }}">{% endif %}
+    {% partial 'catalogue-fields' %}
+    <div class="invalid-feedback d-block" data-validate-for="id"></div><div class="invalid-feedback d-block" data-validate-for="version"></div><div class="invalid-feedback d-block" data-validate-for="expected_currency"></div>
+    <div class="form-actions"><a class="btn btn-outline-secondary" href="/catalogue/{{ kind }}">Cancel</a><button class="btn btn-primary ms-auto" type="submit">Save record</button></div>
 </form>
-</div><div class="table-responsive"><table class="table table-vcenter mb-0"><thead><tr><th>Record</th><th>Details</th><th>State</th><th><span class="visually-hidden">Actions</span></th></tr></thead><tbody>
-{% for row in records %}<tr data-record-id="{{ row.id }}">
-    <td>{% if kind == 'offers' %}{{ row.supplier.name }}{% else %}{{ row.name }}{% endif %}<div class="text-secondary small">{{ kind == 'products' ? row.sku : row.code }}</div></td>
-    <td>{% if kind == 'parties' %}{{ row.is_customer ? 'Customer ' }}{{ row.is_supplier ? 'Supplier' }}
+{% if record %}<div class="border-top mt-4 pt-3 d-flex flex-wrap align-items-center gap-3">
+<p class="text-secondary small mb-0 flex-fill">Deactivation preserves history and temporarily blocks this record and its active children from new selections. Restoring it resumes children that are still active.</p>
+<form data-request="catalogue::onSetActive" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">
+    {% partial 'form-errors' %}<input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="id" value="{{ record.id }}"><input type="hidden" name="version" value="{{ record.version }}"><input type="hidden" name="is_active" value="{{ record.is_active ? '0' : '1' }}">
+    <button class="btn {{ record.is_active ? 'btn-outline-danger' : 'btn-outline-success' }}" type="submit">{{ record.is_active ? 'Deactivate' : 'Restore' }}</button>
+</form></div>{% endif %}
+</div></section>
+{% endif %}
+<div class="card">
+<div class="card-header"><nav aria-label="Catalogue sections" class="w-100"><ul class="nav nav-tabs card-header-tabs flex-nowrap overflow-auto">
+{% for key, label in kinds %}<li class="nav-item"><a class="nav-link text-nowrap{% if kind == key %} active{% endif %}" href="/catalogue/{{ key }}"{% if kind == key %} aria-current="page"{% endif %}>{{ label }}</a></li>{% endfor %}
+</ul></nav></div>
+<div class="card-body border-bottom">
+<form method="get" class="row g-2 align-items-end" aria-label="Search catalogue">
+    <div class="col-md-6"><label class="form-label" for="catalogue-search">Search</label><input class="form-control" id="catalogue-search" type="search" name="q" value="{{ filters.q }}" maxlength="100"></div>
+    <div class="col-md-3"><label class="form-label" for="catalogue-status">Availability</label><select class="form-select" id="catalogue-status" name="status"><option value="active" {{ filters.status|default('active') == 'active' ? 'selected' }}>Available</option><option value="inactive" {{ filters.status == 'inactive' ? 'selected' }}>Inactive or unavailable</option><option value="all" {{ filters.status == 'all' ? 'selected' }}>All records</option></select></div>
+    <div class="col-md-3 d-flex gap-2"><button class="btn btn-outline-primary" type="submit">{% partial 'icon' name='search' %}Search</button>{% if filters.q or (filters.status and filters.status != 'active') %}<a class="btn btn-ghost-secondary" href="/catalogue/{{ kind }}">Reset</a>{% endif %}</div>
+</form>
+</div>
+<div class="table-responsive"><table class="table card-table table-vcenter mb-0"><thead><tr><th>Record</th><th>Details</th><th>State</th><th><span class="visually-hidden">Actions</span></th></tr></thead><tbody>
+{% for row in records %}<tr data-record-id="{{ row.id }}"{% if record and record.id == row.id %} class="table-active"{% endif %}>
+    <td><span class="fw-semibold">{% if kind == 'offers' %}{{ row.supplier.name }}{% else %}{{ row.name }}{% endif %}</span><div class="text-secondary small">{{ kind == 'products' ? row.sku : row.code }}</div></td>
+    <td>{% if kind == 'parties' %}{% if row.is_customer %}<span class="badge bg-indigo-lt">Customer</span> {% endif %}{% if row.is_supplier %}<span class="badge bg-azure-lt">Supplier</span>{% endif %}
         {% elseif kind == 'products' %}Base UOM: {{ row.base_uom }}
         {% elseif kind == 'packages' %}{{ row.product.name }} · {{ row.conversion }} {{ row.product.base_uom }}<div class="text-secondary small">{{ row.sales_price is null ? 'Sales price not set' : workspaceMember.company.currency ~ ' ' ~ row.sales_price ~ ' before tax' }}</div>
         {% elseif kind == 'offers' %}{{ row.package.name }} · {{ workspaceMember.company.currency }} {{ row.unit_price }} before tax
@@ -28,25 +52,7 @@ view = "layout"
         {% if kind == 'packages' and not row.product.is_active %}<div class="text-secondary small">Product inactive</div>{% endif %}
         {% if kind == 'offers' and (not row.supplier.is_active or not row.supplier.is_supplier or not row.package.is_active or not row.package.product.is_active) %}<div class="text-secondary small">Parent unavailable</div>{% endif %}</td>
     <td class="text-end">{% if canWriteCatalogue %}<a class="btn btn-outline-secondary btn-sm" href="/catalogue/{{ kind }}?edit={{ row.id }}&status={{ filters.status|default('active') }}#catalogue-editor">Edit<span class="visually-hidden"> {{ kind == 'offers' ? row.supplier.name : row.name }}</span></a>{% endif %}</td>
-</tr>{% else %}<tr><td colspan="4" class="text-secondary p-4">No matching records.</td></tr>{% endfor %}
+</tr>{% else %}<tr><td colspan="4" class="table-empty">No matching records.{% if canWriteCatalogue %} <a href="/catalogue/{{ kind }}?new=1#catalogue-editor">Add the first one</a>.{% endif %}</td></tr>{% endfor %}
 </tbody></table></div>
-<div class="card-footer d-flex align-items-center justify-content-between gap-2"><span class="text-secondary small">{{ records.total }} records · Page {{ records.currentPage }} of {{ records.lastPage }}</span><div class="d-flex gap-2">{% if records.previousPageUrl %}<a class="btn btn-outline-secondary btn-sm" href="{{ records.previousPageUrl }}">Previous</a>{% endif %}{% if records.nextPageUrl %}<a class="btn btn-outline-secondary btn-sm" href="{{ records.nextPageUrl }}">Next</a>{% endif %}</div></div>
+<div class="card-footer d-flex align-items-center justify-content-between gap-2"><span class="text-secondary small">{{ records.total }} records · Page {{ records.currentPage }} of {{ records.lastPage }}</span><div class="btn-list">{% if records.previousPageUrl %}<a class="btn btn-outline-secondary btn-sm" href="{{ records.previousPageUrl }}">Previous</a>{% endif %}{% if records.nextPageUrl %}<a class="btn btn-outline-secondary btn-sm" href="{{ records.nextPageUrl }}">Next</a>{% endif %}</div></div>
 </div>
-{% if showEditor %}
-<section class="card" aria-labelledby="editor-title" id="catalogue-editor"><div class="card-body">
-<h2 class="h3" id="editor-title">{{ record ? 'Edit record' : 'Add record' }}</h2>
-<form id="catalogue-form" data-request="catalogue::{{ saveHandler }}" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">
-    {% partial 'form-errors' %}
-    {% if record %}<input type="hidden" name="id" value="{{ record.id }}"><input type="hidden" name="version" value="{{ record.version }}">{% endif %}
-    {% if kind in ['packages', 'offers'] %}<input type="hidden" name="expected_currency" value="{{ workspaceMember.company.currency }}">{% endif %}
-    {% partial 'catalogue-fields' %}
-    <div class="invalid-feedback d-block" data-validate-for="id"></div><div class="invalid-feedback d-block" data-validate-for="version"></div><div class="invalid-feedback d-block" data-validate-for="expected_currency"></div>
-    <div class="d-flex gap-2 mt-3"><button class="btn btn-primary" type="submit">Save record</button><a class="btn btn-outline-secondary" href="/catalogue/{{ kind }}">Cancel</a></div>
-</form>
-{% if record %}<div class="border-top mt-4 pt-3"><p class="text-secondary small">Deactivation preserves history and temporarily blocks this record and its active children from new selections. Restoring it resumes children that are still active.</p>
-<form data-request="catalogue::onSetActive" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">
-    {% partial 'form-errors' %}<input type="hidden" name="kind" value="{{ kind }}"><input type="hidden" name="id" value="{{ record.id }}"><input type="hidden" name="version" value="{{ record.version }}"><input type="hidden" name="is_active" value="{{ record.is_active ? '0' : '1' }}">
-    <button class="btn {{ record.is_active ? 'btn-outline-danger' : 'btn-outline-success' }}" type="submit">{{ record.is_active ? 'Deactivate' : 'Restore' }}</button>
-</form></div>{% endif %}
-</div></section>
-{% endif %}

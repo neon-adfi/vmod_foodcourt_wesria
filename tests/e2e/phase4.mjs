@@ -91,7 +91,7 @@ async function formData(selector) {
     return page.evaluate(selector => Object.fromEntries(new FormData(document.querySelector(selector))), selector);
 }
 async function stateContains(text) {
-    await page.waitForFunction(text => document.querySelector('#document-detail')?.innerText.includes(text), text);
+    await page.waitForFunction(text => document.querySelector('#document-detail')?.innerText.includes(text.replaceAll('_', ' ')), text);
 }
 async function createPO(quantity = '3') {
     await page.goto(base + '/purchasing?new=1');

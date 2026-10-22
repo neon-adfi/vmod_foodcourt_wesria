@@ -97,7 +97,7 @@ async function formData(selector) {
     return page.evaluate(selector => Object.fromEntries(new FormData(document.querySelector(selector))), selector);
 }
 async function stateContains(text) {
-    await page.waitForFunction(text => document.querySelector('#document-detail')?.innerText.includes(text), text);
+    await page.waitForFunction(text => document.querySelector('#document-detail')?.innerText.includes(text.replaceAll('_', ' ')), text);
 }
 
 async function catalogue(kind, values, selects = {}, checks = []) {
@@ -195,7 +195,7 @@ try {
         assert.ok((await page.evaluate(() => document.querySelector('#invoice-detail').innerText)).includes('MYR 0.00'));
         assert.equal(await page.evaluate(() => document.querySelector('#invoice-detail b') !== null || !!window.injected),false);
         await page.fill('#ref-amount','106'); await page.fill('#ref-reason','Confirm external gross'); await submit('#invoice-form');
-        await page.click('#invoice-detail summary'); await screenshot('invoice-audit');
+        await page.click('#invoice-history-tab'); await screenshot('invoice-audit');
         passed('Invoice links, validation retention and audit through UI'); await persist();
     }
     if (process.env.WESRIA_PHASE6_PRINCIPAL_ONLY === '1') {

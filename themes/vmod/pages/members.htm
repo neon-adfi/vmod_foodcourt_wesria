@@ -6,41 +6,49 @@ view = "layout"
 [workspaces]
 view = "members"
 ==
-<div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }}</div><h1>Members</h1><p class="text-secondary">Manage company access without changing anyone’s personal account.</p></div>
+{% partial 'page-header' pretitle=workspaceMember.company.name title='Members' description='Manage company access without changing anyone’s personal account.' body %}
+    <a class="btn btn-primary" href="#invite-member">{% partial 'icon' name='plus' %}Invite member</a>
+{% endpartial %}
 <div class="row g-3">
-<div class="col-lg-7"><div class="card"><div class="card-body"><h2 class="h3">Company members</h2>
+<div class="col-lg-7"><section class="card" aria-labelledby="members-title">
+<div class="card-header"><h2 class="card-title" id="members-title">Company members</h2><span class="badge bg-secondary-lt ms-2">{{ companyMembers|length }}</span></div>
+<div class="card-body py-0 disclosure-list">
 {% for member in companyMembers %}
-<details class="border-bottom pb-2" id="member-{{ member.id }}"><summary>{{ member.user.full_name }} <span class="badge {{ member.is_active ? 'bg-green-lt' : 'bg-secondary-lt' }} ms-2">{{ member.is_active ? 'Active' : 'Disabled' }}</span></summary>
+<details id="member-{{ member.id }}"><summary><span class="avatar avatar-sm bg-primary-lt" aria-hidden="true">{{ member.user.full_name|slice(0,1)|upper }}</span><span class="text-break">{{ member.user.full_name }}<span class="d-block small text-secondary fw-normal">{{ member.role.name }}</span></span><span class="badge {{ member.is_active ? 'bg-green-lt' : 'bg-secondary-lt' }} ms-auto">{{ member.is_active ? 'Active' : 'Disabled' }}</span></summary>
 <p class="text-secondary text-break">{{ member.user.email }}</p>
 <form data-request="workspaces::onMember" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">
     {% partial 'form-errors' %}<input type="hidden" name="id" value="{{ member.id }}">
-    <label class="form-label" for="member-role-{{ member.id }}">Role</label><select class="form-select mb-3" id="member-role-{{ member.id }}" name="role_id" required>{% for role in roles %}<option value="{{ role.id }}" {% if role.id == member.role_id %}selected{% endif %}>{{ role.name }}</option>{% endfor %}</select><div class="invalid-feedback d-block" data-validate-for="role_id"></div>
+    <div class="mb-3"><label class="form-label required" for="member-role-{{ member.id }}">Role</label><select class="form-select" id="member-role-{{ member.id }}" name="role_id" required>{% for role in roles %}<option value="{{ role.id }}" {% if role.id == member.role_id %}selected{% endif %}>{{ role.name }}</option>{% endfor %}</select><div class="invalid-feedback d-block" data-validate-for="role_id"></div></div>
     {% partial 'branch-grants' selected=member.branches.pluck('id').all() %}
-    <input type="hidden" name="is_active" value="0"><label class="form-check mb-3"><input class="form-check-input" type="checkbox" name="is_active" value="1" {% if member.is_active %}checked{% endif %}><span class="form-check-label">Active in this company</span></label>
+    <input type="hidden" name="is_active" value="0"><label class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" name="is_active" value="1" {% if member.is_active %}checked{% endif %}><span class="form-check-label">Active in this company</span></label>
     <button class="btn btn-primary" type="submit">Save member</button>
 </form></details>
-{% else %}<p class="text-secondary">No members within your management access.</p>{% endfor %}
-</div></div></div>
-<div class="col-lg-5"><div class="card"><div class="card-body"><h2 class="h3">Invite a member</h2>
+{% else %}<p class="text-secondary py-3 mb-0">No members within your management access.</p>{% endfor %}
+</div></section></div>
+<div class="col-lg-5"><section class="card" id="invite-member" aria-labelledby="invite-title">
+<div class="card-header"><div><h2 class="card-title" id="invite-title">Invite a member</h2><p class="card-subtitle text-secondary mb-0">They receive an email link to join this company.</p></div></div>
 <form data-request="workspaces::onInvite" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">
+    <div class="card-body">
     {% partial 'form-errors' %}
-    <label class="form-label" for="invite-email">Email address</label><input class="form-control mb-2" id="invite-email" name="email" type="email" required><div class="invalid-feedback d-block" data-validate-for="email"></div>
-    <label class="form-label mt-3" for="invite-role">Role</label><select class="form-select mb-3" id="invite-role" name="role_id" required>{% for role in roles %}<option value="{{ role.id }}">{{ role.name }}</option>{% endfor %}</select><div class="invalid-feedback d-block" data-validate-for="role_id"></div>
+    <div class="mb-3"><label class="form-label required" for="invite-email">Email address</label><input class="form-control" id="invite-email" name="email" type="email" autocomplete="off" required><div class="invalid-feedback d-block" data-validate-for="email"></div></div>
+    <div class="mb-3"><label class="form-label required" for="invite-role">Role</label><select class="form-select" id="invite-role" name="role_id" required>{% for role in roles %}<option value="{{ role.id }}">{{ role.name }}</option>{% endfor %}</select><div class="invalid-feedback d-block" data-validate-for="role_id"></div></div>
     {% partial 'branch-grants' selected=[] %}
-    <button class="btn btn-primary" type="submit">Send invitation</button>
+    </div>
+    <div class="card-footer text-end"><button class="btn btn-primary" type="submit">Send invitation</button></div>
 </form>
-</div></div></div>
+</section></div>
 </div>
-<div class="card mt-4"><div class="card-body"><h2 class="h3">Invitations</h2>
+<section class="card mt-3" aria-labelledby="invitations-title"><div class="card-header"><h2 class="card-title" id="invitations-title">Pending invitations</h2><span class="badge bg-secondary-lt ms-2">{{ invitations|length }}</span></div>
+<div class="list-group list-group-flush">
 {% for invite in invitations %}
-<div class="border-bottom py-3">
-    <div class="fw-semibold text-break">{{ invite.email }}</div><p class="text-secondary small">{{ invite.role.name }} · Expires {{ invite.expires_at|date('d M Y, H:i') }}</p>
-    <div class="d-flex gap-2">
+<div class="list-group-item d-flex flex-wrap align-items-center gap-3">
+    <div class="flex-fill"><div class="fw-semibold text-break">{{ invite.email }}</div><div class="text-secondary small">{{ invite.role.name }} · Expires {{ invite.expires_at|date('d M Y, H:i') }}</div></div>
+    <div class="btn-list">
         <form data-request="workspaces::onInvite" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">
             {% partial 'form-errors' %}<input type="hidden" name="email" value="{{ invite.email }}"><input type="hidden" name="role_id" value="{{ invite.role_id }}">{% for id in invite.branch_ids %}<input type="hidden" name="branch_ids[]" value="{{ id }}">{% endfor %}<button class="btn btn-outline-primary btn-sm" type="submit">Resend</button>
         </form>
         <form data-request="workspaces::onRevoke" data-request-confirm="Revoke this invitation? Its current link will stop working." data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">{{ form_token() }}<input type="hidden" name="id" value="{{ invite.id }}"><button class="btn btn-outline-danger btn-sm" type="submit">Revoke</button></form>
     </div>
 </div>
-{% else %}<p class="text-secondary mb-0">No pending invitations.</p>{% endfor %}
-</div></div>
+{% else %}<div class="card-body text-secondary">No pending invitations.</div>{% endfor %}
+</div></section>

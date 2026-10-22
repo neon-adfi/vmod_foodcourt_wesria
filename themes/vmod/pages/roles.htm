@@ -6,8 +6,11 @@ view = "layout"
 [workspaces]
 view = "roles"
 ==
-<div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }}</div><h1>Roles & permissions</h1><p class="text-secondary">Changes to a role apply to all its members and pending invitations.</p></div>
-<div class="card mb-4"><div class="card-body"><h2 class="h3">Company roles</h2>
-{% for role in roles %}<details class="border-bottom pb-2" id="role-{{ role.id }}"><summary>{{ role.name }} <span class="badge bg-secondary-lt ms-2">{{ role.permissions|length }} permissions</span></summary>{% partial 'role-form' role=role %}</details>{% else %}<p class="text-secondary">No roles within your management access.</p>{% endfor %}
-</div></div>
-<div class="card"><div class="card-body"><details id="new-role"><summary>Create a role</summary>{% partial 'role-form' role=null %}</details></div></div>
+{% partial 'page-header' pretitle=workspaceMember.company.name title='Roles & permissions' description='Changes to a role apply to all its members and pending invitations.' body %}
+    <a class="btn btn-primary" href="#new-role">{% partial 'icon' name='plus' %}Create role</a>
+{% endpartial %}
+<section class="card mb-3" aria-labelledby="roles-title"><div class="card-header"><h2 class="card-title" id="roles-title">Company roles</h2><span class="badge bg-secondary-lt ms-2">{{ roles|length }}</span></div>
+<div class="card-body py-0 disclosure-list">
+{% for role in roles %}<details id="role-{{ role.id }}"><summary>{{ role.name }} <span class="badge bg-secondary-lt fw-normal">{{ role.permissions|length }} permissions</span></summary>{% partial 'role-form' role=role %}</details>{% else %}<p class="text-secondary py-3 mb-0">No roles within your management access.</p>{% endfor %}
+</div></section>
+<section class="card"><div class="card-body py-0 disclosure-list"><details id="new-role"><summary class="text-primary">{% partial 'icon' name='plus' %}Create a role</summary>{% partial 'role-form' role=null %}</details></div></section>

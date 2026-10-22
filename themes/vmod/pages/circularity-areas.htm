@@ -6,27 +6,33 @@ view = "layout"
 [circularityCapture]
 view = "areas"
 ==
-<div class="page-heading"><div class="subheader">{{ workspaceMember.company.name }}</div><h1>Circularity areas</h1><p class="text-secondary">Manage the stalls and shared areas where measurements are recorded.</p></div>
-<nav class="d-flex gap-3 mb-4" aria-label="Circularity"><a href="/circularity">Overview</a><a href="/circularity/entries">Measurements</a><a href="/circularity/areas" aria-current="page">Areas</a></nav>
+{% partial 'page-header' pretitle=workspaceMember.company.name title=(area ? area.name : (filters.new ? 'New area' : 'Circularity areas')) description=(area or filters.new ? null : 'Manage the stalls and shared areas where measurements are recorded.') body %}
+    {% if area or filters.new %}<a class="btn btn-outline-secondary" href="/circularity/areas">All areas</a>{% endif %}
+    {% if access['circularity.write'] and not area and not filters.new and not circularityUnavailable %}<a class="btn btn-primary" href="/circularity/areas?new=1">{% partial 'icon' name='plus' %}New area</a>{% endif %}
+{% endpartial %}
 {% if circularityUnavailable %}<div class="alert alert-warning" role="alert">Circularity is temporarily unavailable. <a href="">Try again</a>.</div>{% else %}
 {% if area or filters.new %}
-<a class="btn btn-outline-secondary mb-3" href="/circularity/areas">All areas</a>
 {% if access['circularity.write'] %}
-<section class="card"><div class="card-body"><h2>{{ area ? 'Edit area' : 'New area' }}</h2>
+<section class="card"><div class="card-header"><div><h2 class="card-title mb-1">{{ area ? 'Edit area' : 'Area details' }}</h2>{% if area %}<p class="card-subtitle text-secondary mb-0">{{ courtNames[area.branch_ref] }} · Version {{ area.version }}</p>{% else %}<p class="card-subtitle text-secondary mb-0">An area is a stall or a shared space inside one food court.</p>{% endif %}</div></div>
+<div class="card-body">
 <form id="circularity-area-form" data-request="circularityCapture::onSaveArea" data-request-validate data-request-flash data-workspace-context="{{ workspaceToken }}" method="post">
 {% partial 'form-errors' %}
-{% if area %}<input type="hidden" name="id" value="{{ area.id }}"><input type="hidden" name="version" value="{{ area.version }}"><input type="hidden" name="branch_ref" value="{{ area.branch_ref }}"><p>{{ courtNames[area.branch_ref] }} · Version {{ area.version }}</p>
-{% else %}<label class="form-label" for="area-court">Food court</label><select id="area-court" name="branch_ref" class="form-select mb-3" required><option value="">Choose food court</option>{% for branch in branches %}<option value="{{ branch.id }}" {{ selectedCourt == branch.id ? 'selected' }}>{{ branch.name }}</option>{% endfor %}</select>{% endif %}
-<label class="form-label" for="area-name">Area name</label><input id="area-name" name="name" value="{{ area.name }}" class="form-control mb-3" required maxlength="120">
-<label class="form-label" for="area-kind">Kind</label><select id="area-kind" name="kind" class="form-select mb-3"><option value="stall" {{ area.kind == 'stall' ? 'selected' }}>Stall</option><option value="shared_area" {{ area.kind == 'shared_area' ? 'selected' }}>Shared area</option></select>
-<input type="hidden" name="is_active" value="0"><label class="form-check mb-3"><input class="form-check-input" type="checkbox" name="is_active" value="1" {{ not area or area.is_active ? 'checked' }}><span class="form-check-label">Active</span></label>
-<p class="text-secondary">Inactive areas keep their measurements. Check Active to use an area again.</p>
+{% if area %}<input type="hidden" name="id" value="{{ area.id }}"><input type="hidden" name="version" value="{{ area.version }}"><input type="hidden" name="branch_ref" value="{{ area.branch_ref }}">{% endif %}
+<div class="row g-3">
+    {% if not area %}<div class="col-md-6"><label class="form-label required" for="area-court">Food court</label><select id="area-court" name="branch_ref" class="form-select" required><option value="">Choose food court</option>{% for branch in branches %}<option value="{{ branch.id }}" {{ selectedCourt == branch.id ? 'selected' }}>{{ branch.name }}</option>{% endfor %}</select></div>{% endif %}
+    <div class="col-md-6"><label class="form-label required" for="area-name">Area name</label><input id="area-name" name="name" value="{{ area.name }}" class="form-control" required maxlength="120"></div>
+    <div class="col-md-6"><label class="form-label required" for="area-kind">Kind</label><select id="area-kind" name="kind" class="form-select" aria-describedby="area-kind-hint"><option value="stall" {{ area.kind == 'stall' ? 'selected' }}>Stall</option><option value="shared_area" {{ area.kind == 'shared_area' ? 'selected' }}>Shared area</option></select><small class="form-hint" id="area-kind-hint">Shared areas collect waste from several stalls; record each physical quantity once.</small></div>
+    <div class="col-md-6 d-flex flex-column justify-content-end"><input type="hidden" name="is_active" value="0"><label class="form-check form-switch mb-1"><input class="form-check-input" type="checkbox" name="is_active" value="1" aria-describedby="area-active-hint" {{ not area or area.is_active ? 'checked' }}><span class="form-check-label">Active in this food court</span></label><small class="form-hint" id="area-active-hint">Inactive areas keep their measurements and can be re-activated.</small></div>
+</div>
 {% for field in ['name','kind','branch_ref','is_active','version'] %}<div class="invalid-feedback d-block" data-validate-for="{{ field }}"></div>{% endfor %}
-<button class="btn btn-primary" type="submit">Save area</button></form></div></section>
-{% elseif area %}<p>{{ area.name }} · {{ area.is_active ? 'Active' : 'Inactive' }}</p>{% endif %}
+<div class="form-actions"><a class="btn btn-outline-secondary" href="/circularity/areas">Cancel</a><button class="btn btn-primary ms-auto" type="submit">Save area</button></div></form></div></section>
+{% elseif area %}<section class="card"><div class="card-body"><div class="datagrid">
+    <div class="datagrid-item"><div class="datagrid-title">Food court</div><div class="datagrid-content">{{ courtNames[area.branch_ref] }}</div></div>
+    <div class="datagrid-item"><div class="datagrid-title">Kind</div><div class="datagrid-content">{{ area.kind == 'stall' ? 'Stall' : 'Shared area' }}</div></div>
+    <div class="datagrid-item"><div class="datagrid-title">Status</div><div class="datagrid-content"><span class="badge {{ area.is_active ? 'bg-green-lt' : 'bg-secondary-lt' }}">{{ area.is_active ? 'Active' : 'Inactive' }}</span></div></div>
+</div></div></section>{% endif %}
 {% else %}
-{% if access['circularity.write'] %}<a class="btn btn-primary mb-3" href="/circularity/areas?new=1">New area</a>{% endif %}
-<div class="card"><div class="table-responsive"><table class="table"><thead><tr><th>Area</th><th>Food court</th><th>Kind</th><th>Status</th></tr></thead><tbody>
-{% for row in areas %}<tr><td><a href="/circularity/areas?id={{ row.id }}">{{ row.name }}</a></td><td>{{ courtNames[row.branch_ref] }}</td><td>{{ row.kind == 'stall' ? 'Stall' : 'Shared area' }}</td><td>{{ row.is_active ? 'Active' : 'Inactive' }}</td></tr>
-{% else %}<tr><td colspan="4">No areas yet.</td></tr>{% endfor %}</tbody></table></div></div>
+<div class="card"><div class="table-responsive"><table class="table card-table table-vcenter mb-0"><thead><tr><th>Area</th><th>Food court</th><th>Kind</th><th>Status</th><th class="text-end"><span class="visually-hidden">Actions</span></th></tr></thead><tbody>
+{% for row in areas %}<tr><td><a href="/circularity/areas?id={{ row.id }}" class="fw-semibold">{{ row.name }}</a></td><td>{{ courtNames[row.branch_ref] }}</td><td><span class="badge {{ row.kind == 'stall' ? 'bg-blue-lt' : 'bg-azure-lt' }}">{{ row.kind == 'stall' ? 'Stall' : 'Shared area' }}</span></td><td><span class="badge {{ row.is_active ? 'bg-green-lt' : 'bg-secondary-lt' }}">{{ row.is_active ? 'Active' : 'Inactive' }}</span></td><td class="text-end">{% if access['circularity.write'] %}<a class="btn btn-outline-secondary btn-sm" href="/circularity/areas?id={{ row.id }}">Edit<span class="visually-hidden"> {{ row.name }}</span></a>{% endif %}</td></tr>
+{% else %}<tr><td colspan="5"><div class="empty py-5"><p class="empty-title">No areas yet</p><p class="empty-subtitle text-secondary">Create your first stall or shared area to start recording measurements.</p>{% if access['circularity.write'] %}<div class="empty-action"><a class="btn btn-primary" href="/circularity/areas?new=1">{% partial 'icon' name='plus' %}New area</a></div>{% endif %}</div></td></tr>{% endfor %}</tbody></table></div></div>
 {% endif %}{% endif %}

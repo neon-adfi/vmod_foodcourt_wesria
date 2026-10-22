@@ -1,59 +1,111 @@
 description = "Vmod application"
 ==
+{% set pageId = this.page.id %}
+{% if currentUser %}
+{# One navigation map drives the menu and the section sub-nav; items are matched by CMS page file name. #}
+{% set nav = [
+    {title: 'Overview', icon: 'home', items: [{label: 'Overview', url: '/', page: 'home'}]},
+    {title: 'Purchasing', icon: 'cart', items: [
+        {label: 'Purchase orders', url: '/purchasing', page: 'purchasing', perm: 'purchaseorder.read'},
+        {label: 'Goods receipts', url: '/receiving', page: 'receiving', perm: 'goodsreceipt.read'}
+    ]},
+    {title: 'Sales', icon: 'truck', items: [
+        {label: 'Sales orders', url: '/sales', page: 'sales', perm: 'salesorder.read'},
+        {label: 'Delivery orders', url: '/delivery', page: 'delivery', perm: 'deliveryorder.read'}
+    ]},
+    {title: 'Inventory', icon: 'package', items: [
+        {label: 'Stock', url: '/inventory', page: 'inventory', perm: 'inventory.read'},
+        {label: 'Catalogue', url: '/catalogue/products', page: 'catalogue', perm: 'catalogue.read'}
+    ]},
+    {title: 'Invoices', icon: 'receipt', items: [{label: 'Invoice references', url: '/invoice-references', page: 'invoice-references', perm: 'invoice_reference.read'}]},
+    {title: 'Circularity', icon: 'recycle', items: [
+        {label: 'Overview', url: '/circularity', page: 'circularity', perm: 'circularity.read'},
+        {label: 'Measurements', url: '/circularity/entries', page: 'circularity-entries', perm: 'circularity.read'},
+        {label: 'Areas', url: '/circularity/areas', page: 'circularity-areas', perm: 'circularity.read'}
+    ]},
+    {title: 'Settings', icon: 'settings', items: [
+        {label: 'Company & branches', url: '/settings/company', page: 'company', perm: 'workspace.manage'},
+        {label: 'Members', url: '/settings/members', page: 'members', perm: 'users.manage'},
+        {label: 'Roles & permissions', url: '/settings/roles', page: 'roles', perm: 'roles.manage'},
+        {label: 'My account', url: '/account', page: 'account'},
+        {label: 'Workspaces', url: '/workspaces', page: 'workspaces'}
+    ]}
+] %}
+{% set menu = [] %}
+{% for group in nav %}
+    {% set items = group.items|filter(item => not item.perm or access[item.perm]) %}
+    {% if items|length %}{% set menu = menu|merge([group|merge({items: items, active: pageId in items|column('page')})]) %}{% endif %}
+{% endfor %}
+{% set section = menu|filter(group => group.active)|first %}
+{% endif %}
 <!doctype html>
-<html lang="en">
+<html lang="en" data-bs-theme="light">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="referrer" content="same-origin">
     <title>{{ this.page.title }} · Vmod</title>
     <link href="{{ 'assets/tabler.min.css'|theme }}" rel="stylesheet">
-    <link href="{{ 'assets/app.css'|theme }}?v=20261020-1" rel="stylesheet">
+    <link href="{{ 'assets/app.css'|theme }}?v=20261022-3" rel="stylesheet">
     {% styles %}
 </head>
 <body{% if currentUser %} data-history-context="{{ workspaceToken }}"{% endif %}>
 <a href="#main" class="visually-hidden-focusable skip-link">Skip to content</a>
 <div class="page">
-    <header class="navbar navbar-expand-md navbar-light">
+    {# Tabler condensed layout: section links stay one click away; their pages appear in the sub-nav below (desktop) or nested in the collapsed menu (mobile). #}
+    <header class="navbar navbar-expand-lg app-topbar d-print-none">
         <div class="container-xl">
-            <a class="navbar-brand fw-bold" href="/" aria-label="Vmod home"><span class="brand-mark" aria-hidden="true">V</span> Vmod</a>
+            <a class="navbar-brand fw-bold pe-0 pe-lg-3" href="/" aria-label="Vmod home"><span class="brand-mark" aria-hidden="true">V</span> Vmod</a>
             {% if currentUser %}
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#main-nav" aria-controls="main-nav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
             <nav class="collapse navbar-collapse" id="main-nav" aria-label="Main navigation">
-                <div class="navbar-nav me-auto flex-wrap">
-                    <a class="nav-link" href="/">Overview</a>
-                    {% if access['purchaseorder.read'] %}<a class="nav-link" href="/purchasing">Purchasing</a>{% endif %}
-                {% if access['goodsreceipt.read'] %}<a class="nav-link" href="/receiving">Receiving</a>{% endif %}
-                {% if access['salesorder.read'] %}<a class="nav-link" href="/sales">Sales</a>{% endif %}
-                {% if access['deliveryorder.read'] %}<a class="nav-link" href="/delivery">Delivery</a>{% endif %}
-                {% if access['invoice_reference.read'] %}<a class="nav-link" href="/invoice-references">Invoice references</a>{% endif %}
-                {% if access['inventory.read'] %}<a class="nav-link" href="/inventory">Inventory</a>{% endif %}
-                {% if access['catalogue.read'] %}<a class="nav-link" href="/catalogue/products">Catalogue</a>{% endif %}
-                {% if access['circularity.read'] %}<a class="nav-link" href="/circularity">Circularity</a>{% endif %}
-                    <a class="nav-link" href="/workspaces">Switch workspace</a>
-                    {% if access['workspace.manage'] %}<a class="nav-link" href="/settings/company">Company & branches</a>{% endif %}
-                    {% if access['users.manage'] %}<a class="nav-link" href="/settings/members">Members</a>{% endif %}
-                    {% if access['roles.manage'] %}<a class="nav-link" href="/settings/roles">Roles</a>{% endif %}
-                </div>
-                <div class="navbar-nav align-items-md-center gap-md-2">
-                    <a class="nav-link" href="/account">{{ currentUser.first_name }}</a>
-                    <form data-request="identity::onLogout" method="post">{{ form_token() }}<button class="btn btn-outline-secondary btn-sm" type="submit">Sign out</button></form>
+                <ul class="navbar-nav me-auto flex-wrap">
+                    {% for group in menu %}
+                    {% set first = group.items|first %}
+                    <li class="nav-item{{ group.active ? ' active' }}">
+                        <a class="nav-link{{ group.items|length > 1 ? ' d-none d-lg-flex' }}" href="{{ first.url }}"{% if first.page == pageId %} aria-current="page"{% endif %}><span class="nav-link-icon d-lg-none d-xl-inline-block">{% partial 'icon' name=group.icon %}</span><span class="nav-link-title">{{ group.title }}</span></a>
+                        {% if group.items|length > 1 %}
+                        <div class="d-lg-none">
+                            <div class="nav-group-title"><span class="nav-link-icon">{% partial 'icon' name=group.icon %}</span>{{ group.title }}</div>
+                            <ul class="list-unstyled mb-1">{% for item in group.items %}<li><a class="nav-link nav-sublink{{ item.page == pageId ? ' active' }}" href="{{ item.url }}"{% if item.page == pageId %} aria-current="page"{% endif %}>{{ item.label }}</a></li>{% endfor %}</ul>
+                        </div>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                <div class="navbar-nav flex-row flex-nowrap align-items-center gap-2 app-account">
+                    {% if workspaceMember %}
+                    <a class="workspace-chip d-inline-flex d-lg-none d-xxl-inline-flex" href="/workspaces" title="Switch workspace">{% partial 'icon' name='building' %}<span class="chip-text"><strong>{{ workspaceMember.company.name }}</strong> · {{ workspaceBranch ? workspaceBranch.name : 'All branches' }}</span></a>
+                    {% endif %}
+                    <a class="nav-link d-flex align-items-center px-1" href="/account" title="My account"><span class="avatar avatar-sm bg-primary-lt" aria-hidden="true">{{ currentUser.first_name|slice(0,1)|upper }}</span><span class="ms-2 d-lg-none">{{ currentUser.first_name }}</span></a>
+                    <form data-request="identity::onLogout" method="post" class="mb-0">{{ form_token() }}<button class="btn btn-outline-secondary btn-sm" type="submit">Sign out</button></form>
                 </div>
             </nav>
             {% endif %}
         </div>
     </header>
+    {% if section and section.items|length > 1 %}
+    <nav class="app-subnav d-print-none" aria-label="{{ section.title }} sections">
+        <div class="container-xl">
+            <ul class="nav">
+                {% for item in section.items %}<li class="nav-item"><a class="nav-link{{ item.page == pageId ? ' active' }}" href="{{ item.url }}"{% if item.page == pageId %} aria-current="page"{% endif %}>{{ item.label }}</a></li>{% endfor %}
+            </ul>
+        </div>
+    </nav>
+    {% endif %}
     <main class="page-wrapper" id="main" tabindex="-1">
-        <div class="container-xl py-4">
-            {% flash %}<div data-request-notice class="alert alert-{{ type == 'error' ? 'danger' : type }}" role="status">{{ message }}</div>{% endflash %}
-            <div id="request-error" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
-            {% if queryErrors %}{% partial 'query-error' %}{% else %}{% page %}{% endif %}
+        <div class="page-body">
+            <div class="container-xl">
+                {% flash %}<div data-request-notice class="alert alert-{{ type == 'error' ? 'danger' : type }}" role="status">{{ message }}</div>{% endflash %}
+                <div id="request-error" class="alert alert-danger d-none" role="alert" tabindex="-1"></div>
+                {% if queryErrors %}{% partial 'query-error' %}{% else %}{% page %}{% endif %}
+            </div>
         </div>
     </main>
-    <footer class="footer footer-transparent"><div class="container-xl text-secondary small">Vmod · Workspaces & ERP</div></footer>
+    <footer class="footer footer-transparent d-print-none"><div class="container-xl text-secondary small">Vmod · Workspaces &amp; ERP</div></footer>
 </div>
 {% framework extras %}
-<script type="module" src="{{ 'assets/app.js'|theme }}?v=20261021-2"></script>
+<script type="module" src="{{ 'assets/app.js'|theme }}?v=20261022-3"></script>
 {% scripts %}
 </body>
 </html>
